@@ -1,0 +1,7 @@
+@import "tailwindcss"; /* <--- CARA BARU VERSI 4 */
+
+/* Tambahkan ini juga agar map bisa full height */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}

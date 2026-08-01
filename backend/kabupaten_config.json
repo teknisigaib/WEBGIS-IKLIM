@@ -1,0 +1,12 @@
+[
+    {"nama": "SAMARINDA", "lon": 117.15, "lat": -0.50},
+    {"nama": "BALIKPAPAN", "lon": 116.89, "lat": -1.25},
+    {"nama": "BONTANG", "lon": 117.48, "lat": 0.13},
+    {"nama": "KUTAI KARTANEGARA", "lon": 116.70, "lat": -0.10},
+    {"nama": "KUTAI TIMUR", "lon": 117.20, "lat": 1.10},
+    {"nama": "KUTAI BARAT", "lon": 115.80, "lat": -0.40},
+    {"nama": "MAHAKAM ULU", "lon": 114.70, "lat": 1.0},
+    {"nama": "BERAU", "lon": 117.30, "lat": 2.10},
+    {"nama": "PENAJAM PASER UTARA", "lon": 116.60, "lat": -1.10},
+    {"nama": "PASER", "lon": 116.0, "lat": -1.90}
+]

@@ -1,0 +1,27 @@
+# ========================================
+# BACKEND (Python)
+# ========================================
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.env
+backend/arsip/
+backend/cache/
+
+# ========================================
+# FRONTEND (Node/React/Vue/Vite)
+# ========================================
+peta-iklim/node_modules/
+peta-iklim/dist/
+peta-iklim/.env
+peta-iklim/.env.local
+peta-iklim/.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================================
+# OS & EDITOR TIES
+# ========================================
+.DS_Store
+.vscode/
+.idea/
