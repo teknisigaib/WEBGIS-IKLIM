@@ -527,11 +527,11 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     buf.seek(0)
     return buf
 
-@app.get("/api/download-template")
+@app.get("/download-template")
 async def download_template():
     return Response("LON,LAT,VAL\n117.15,-0.50,150", media_type="text/csv", headers={"Content-Disposition": "attachment; filename=template_bmkg.csv"})
 
-@app.post("/api/generate-map")
+@app.post("/generate-map")
 async def generate_map(file: UploadFile = File(...), sigma: float = Form(2.0), power: float = Form(2.0), category: str = Form(...), period: str = Form(...), update_time: str = Form(...), creator: str = Form("TIM FORECASTER"), col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL")):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     map_config = MAP_CONFIGS[category]
@@ -552,7 +552,7 @@ async def generate_map(file: UploadFile = File(...), sigma: float = Form(2.0), p
         "data": { "geojson": clean_geojson, "legend_config": map_config, "analysis_text": ai_text, "raw_data": raw_data }
     }
 
-@app.post("/api/regenerate-analysis")
+@app.post("/regenerate-analysis")
 async def regenerate_analysis(file: UploadFile = File(...), sigma: float = Form(2.0), power: float = Form(2.0), category: str = Form(...), period: str = Form(...), update_time: str = Form(...), col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL"), custom_prompt: str = Form("")):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     map_config = MAP_CONFIGS[category]
@@ -562,7 +562,7 @@ async def regenerate_analysis(file: UploadFile = File(...), sigma: float = Form(
     
     return {"status": "success", "data": {"analysis_text": ai_text}}
 
-@app.post("/api/preview-print")
+@app.post("/preview-print")
 async def preview_print(file: UploadFile = File(...), sigma: float = Form(2.0), power: float = Form(2.0), category: str = Form(...), period: str = Form(...), update_time: str = Form(...), creator: str = Form("TIM FORECASTER"), col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL")):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     
@@ -571,7 +571,7 @@ async def preview_print(file: UploadFile = File(...), sigma: float = Form(2.0), 
     
     return Response(content=buf.getvalue(), media_type="image/png")
 
-@app.post("/api/save-archive")
+@app.post("/save-archive")
 async def save_archive(file: UploadFile = File(...), sigma: float = Form(2.0), power: float = Form(2.0), category: str = Form(...), period: str = Form(...), update_time: str = Form(...), creator: str = Form("TIM FORECASTER"), analysis_text: str = Form(""), col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL")):
     content = await file.read()
     grid_x, grid_y, grid_z, _ = get_or_calculate_idw(content, sigma, power, col_lon, col_lat, col_val)
@@ -595,7 +595,7 @@ async def save_archive(file: UploadFile = File(...), sigma: float = Form(2.0), p
     conn.commit(); conn.close()
     return {"status": "success", "filename": f"{filename_base}.png"}
 
-@app.get("/api/archives")
+@app.get("/archives")
 async def get_archives():
     conn = get_db_connection()
     maps = conn.execute('SELECT * FROM saved_maps ORDER BY id DESC').fetchall()
@@ -615,7 +615,7 @@ async def get_archives():
         })
     return {"status": "success", "data": result}
 
-@app.delete("/api/archives/{item_id}")
+@app.delete("/archives/{item_id}")
 async def delete_archive(item_id: int):
     conn = get_db_connection()
     record = conn.execute('SELECT filename_base FROM saved_maps WHERE id = ?', (item_id,)).fetchone()
@@ -626,7 +626,7 @@ async def delete_archive(item_id: int):
         if os.path.exists(path): os.remove(path)
     return {"status": "success"}
 
-@app.get("/api/archives/download/{file_type}/{filename_base}")
+@app.get("/archives/download/{file_type}/{filename_base}")
 async def download_archive_file(file_type: str, filename_base: str):
     paths = {"png": (PNG_DIR, "image/png", ".png"), "geojson": (GEOJSON_DIR, "application/json", ".json"), "csv": (CSV_DIR, "text/csv", ".csv")}
     if file_type not in paths: raise HTTPException(400, "Invalid type")
@@ -637,7 +637,7 @@ async def download_archive_file(file_type: str, filename_base: str):
 class UpdateAnalysisModel(BaseModel):
     analysis_text: str
 
-@app.put("/api/archives/{item_id}/analysis")
+@app.put("/archives/{item_id}/analysis")
 async def update_archive_analysis(item_id: int, data: UpdateAnalysisModel):
     conn = get_db_connection()
     conn.execute('UPDATE saved_maps SET analysis_text = ? WHERE id = ?', (data.analysis_text, item_id))

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Map, Archive, ArrowRight, Activity, FileText, ChevronRight, BarChart2 } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function Home() {
   const [time, setTime] = useState(new Date());
@@ -20,7 +20,7 @@ export default function Home() {
   useEffect(() => {
     const fetchRecent = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/archives`);
+        const response = await axios.get(`${API_URL}/archives`);
         setRecentMaps(response.data.data.slice(0, 3));
         setIsServerOnline(true);
       } catch (error) {

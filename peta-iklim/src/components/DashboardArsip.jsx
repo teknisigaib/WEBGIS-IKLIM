@@ -7,7 +7,7 @@ import {
   CheckCircle2, AlertCircle, X, Check, Copy, ChevronDown 
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 const CATEGORY_MAP = {
   prakiraan_hujan_dasarian: { label: "Prakiraan Hujan Dasarian" },
@@ -44,7 +44,7 @@ export default function DashboardArsip() {
   const fetchArchives = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/api/archives`);
+      const response = await axios.get(`${API_URL}/archives`);
       if (response.data.status === "success") {
         setArchiveData(response.data.data);
       }
@@ -62,7 +62,7 @@ export default function DashboardArsip() {
   const executeDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const response = await axios.delete(`${API_URL}/api/archives/${deleteTarget.id}`);
+      const response = await axios.delete(`${API_URL}/archives/${deleteTarget.id}`);
       if (response.data.status === "success") {
         showToast(`Arsip "${deleteTarget.title}" berhasil dihapus.`, "success");
         setDeleteTarget(null); 
@@ -77,7 +77,7 @@ export default function DashboardArsip() {
     if (!previewData) return;
     setIsSavingEdit(true);
     try {
-      await axios.put(`${API_URL}/api/archives/${previewData.id}/analysis`, {
+      await axios.put(`${API_URL}/archives/${previewData.id}/analysis`, {
         analysis_text: editAnalysisText
       });
       setPreviewData({...previewData, analysis: editAnalysisText});
@@ -105,7 +105,7 @@ export default function DashboardArsip() {
         showToast("Error: File belum siap atau tidak ditemukan.", "error");
         return;
     }
-    window.open(`${API_URL}/api/archives/download/${type}/${filenameBase}`, '_blank'); 
+    window.open(`${API_URL}/archives/download/${type}/${filenameBase}`, '_blank'); 
   };
 
   const filteredData = archiveData.filter(item => {
@@ -267,7 +267,7 @@ export default function DashboardArsip() {
                               onClick={() => {
                                 setPreviewData({ 
                                   id: item.id, 
-                                  url: `${API_URL}/api/archives/download/png/${item.filename_base}`, 
+                                  url: `${API_URL}/archives/download/png/${item.filename_base}`, 
                                   title: item.title, 
                                   analysis: item.analysis_text 
                                 });
