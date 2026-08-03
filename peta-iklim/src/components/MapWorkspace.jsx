@@ -11,7 +11,7 @@ export default function MapWorkspace({ mapData, isLoading }) {
   const [batasKab, setBatasKab] = useState(null);
 
   useEffect(() => {
-    fetch('/Kaltim.json')
+    fetch('/kaltim.json')
       .then(res => res.json())
       .then(data => setBatasKab(data))
       .catch(err => console.error("Gagal memuat batas kabupaten:", err));

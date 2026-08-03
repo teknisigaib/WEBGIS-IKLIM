@@ -337,7 +337,7 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
 
     # --- 2. LAYER DARATAN INDONESIA (Z-Order 2) ---
     try: 
-        indo = gpd.read_file('Indonesia.json')
+        indo = gpd.read_file('indonesia.json')
         indo.plot(ax=ax_map, color='#cccccc', edgecolor='none', zorder=2)
     except: pass
     
