@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Map, Archive, ArrowRight, Activity, FileText, ChevronRight, BarChart2 } from 'lucide-react';
+import { Map, Archive, Activity, FileText, ChevronRight, BarChart2, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
@@ -35,125 +35,126 @@ export default function Home() {
   const formatUTC = time.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false });
 
   return (
-    // Style fontFamily diset langsung ke Poppins
-    <div style={{ fontFamily: "'Poppins', sans-serif" }} className="min-h-screen bg-slate-50 flex flex-col selection:bg-blue-200 text-slate-800">
+    <div style={{ fontFamily: "'Poppins', sans-serif" }} className="min-h-screen bg-[#f8fafc] flex flex-col text-slate-800">
       
-      {/* NAVBAR (GLASSMORPHISM ELEGANT) */}
-      <nav className="w-full px-6 py-4 flex flex-col md:flex-row justify-between items-center bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+      {/* NAVBAR (CLEAN & PROFESSIONAL) */}
+      <nav className="w-full px-6 py-4 flex flex-col md:flex-row justify-between items-center bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="flex items-center gap-3 mb-4 md:mb-0">
-          <div className="bg-white p-1.5 rounded-lg shadow-sm border border-slate-100">
-            <img src="/logo_bmkg.png" alt="BMKG" className="h-8 w-8 object-contain" onError={(e) => e.target.style.display='none'} />
+          <img src="/logo_bmkg.png" alt="BMKG" className="h-9 w-9 object-contain" onError={(e) => e.target.style.display='none'} />
+          <div className="flex flex-col">
+            <span className="font-bold text-slate-900 text-lg leading-tight tracking-tight">WebGIS Iklim</span>
+            <span className="text-[10px] text-slate-500 font-medium tracking-wide">STAMET KELAS III APT PRANOTO</span>
           </div>
-          <span className="font-extrabold text-slate-800 text-lg tracking-tight">WebGIS Iklim</span>
         </div>
-        <div className="flex items-center gap-6 text-sm font-semibold text-slate-600">
-          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
-            <span className="relative flex h-2.5 w-2.5">
-              {isServerOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isServerOnline ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-            </span>
-            {isServerOnline ? 'API Connected' : 'API Offline'}
+        
+        <div className="flex items-center gap-5 text-sm font-semibold">
+          {/* Status Indikator yang lebih rapi */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border ${isServerOnline ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+            {isServerOnline ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+            <span className="text-xs">{isServerOnline ? 'System Online' : 'System Offline'}</span>
           </div>
-          <div className="hidden md:block w-px h-5 bg-slate-300"></div>
-          <div className="flex flex-col md:flex-row md:gap-4 items-center">
-            <div className="font-bold text-blue-600">{formatWITA} <span className="text-[10px] text-slate-400">WITA</span></div>
-            <div className="font-bold text-amber-600">{formatUTC} <span className="text-[10px] text-slate-400">UTC</span></div>
+
+          <div className="hidden md:block w-px h-6 bg-slate-200"></div>
+          
+          <div className="flex items-center gap-4 bg-slate-50 px-4 py-1.5 rounded-md border border-slate-200">
+            <Clock size={16} className="text-slate-400" />
+            <div className="flex flex-col md:flex-row md:gap-4 items-center">
+              <div className="font-bold text-slate-700">{formatWITA} <span className="text-[10px] text-slate-500">WITA</span></div>
+              <div className="font-bold text-slate-700">{formatUTC} <span className="text-[10px] text-slate-500">UTC</span></div>
+            </div>
           </div>
         </div>
       </nav>
 
-      <main className="flex-1 flex flex-col items-center justify-start pt-12 p-6 md:p-12 relative overflow-hidden">
+      <main className="flex-1 flex flex-col items-center justify-start pt-10 p-6 md:p-10 w-full max-w-5xl mx-auto">
         
-        {/* HERO SECTION (MODERN SAAS) */}
-        <div className="text-center max-w-3xl mx-auto mb-14 relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold mb-6 shadow-sm">
-            <BarChart2 size={14}/> Sistem Operasional Stasiun Meteorologi Kelas III
+        {/* HEADER SECTION (CENTERED & AUTHORITATIVE) */}
+        <div className="w-full text-center flex flex-col items-center mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-bold mb-4">
+            <BarChart2 size={14}/> Dasbor Operasional
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-5 leading-tight">
-            Pusat Kendali <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Pemetaan Iklim Kaltim</span>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-3">
+            Pusat Kendali Pemetaan Iklim
           </h1>
-          <p className="text-base text-slate-500 leading-relaxed font-medium max-w-xl mx-auto">
-            Otomatisasi pengolahan data curah hujan dan sifat hujan menggunakan interpolasi IDW spasial. Cepat, akurat, dan siap rilis.
+          <p className="text-sm text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
+            Sistem otomatisasi pengolahan data curah hujan dan sifat hujan menggunakan algoritma interpolasi IDW spasial. Terintegrasi dengan AI untuk analisis laporan instan.
           </p>
         </div>
 
-        {/* MAIN MENUS (ELEVATED CARDS) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl mb-16 z-10">
+        {/* WORKSPACE CARDS (FUNCTIONAL & FLAT) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full mb-12">
           
-          {/* Card 1: Buat Peta */}
-          <Link to="/buat-peta" className="group flex flex-col justify-between p-8 bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-300 transition-all duration-300">
-            <div>
-              <div className="h-14 w-14 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 flex items-center justify-center rounded-2xl mb-6 shadow-inner border border-blue-100/50">
-                <Map size={28} strokeWidth={2.5} />
+          <Link to="/buat-peta" className="group flex flex-col p-6 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:ring-1 hover:ring-blue-400 transition-all duration-200">
+            <div className="flex items-start justify-between mb-4">
+              <div className="h-12 w-12 bg-blue-50 text-blue-600 flex items-center justify-center rounded-lg border border-blue-100">
+                <Map size={24} strokeWidth={2} />
               </div>
-              <h2 className="text-xl font-bold text-slate-900 mb-3">Buat Peta Baru</h2>
-              <p className="text-slate-500 text-sm leading-relaxed mb-8 font-medium">
-                Masuk ke ruang kerja (Workspace). Unggah data CSV, atur parameter sebaran, dan render peta cuaca interaktif dengan AI.
-              </p>
+              <ChevronRight size={20} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
             </div>
-            <div className="flex items-center justify-between mt-auto">
-              <span className="text-blue-600 text-sm font-bold">Mulai Generator</span>
-              <div className="h-8 w-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                <ChevronRight size={18} />
-              </div>
+            <h2 className="text-lg font-bold text-slate-900 mb-2">Buat Peta Baru</h2>
+            <p className="text-slate-500 text-sm leading-relaxed mb-6 font-medium">
+              Buka ruang kerja untuk mengunggah data stasiun, mengatur parameter sebaran spasial, dan merender peta cuaca.
+            </p>
+            <div className="mt-auto text-blue-600 text-sm font-bold flex items-center gap-1 group-hover:gap-2 transition-all">
+              Mulai Render Spasial <ChevronRight size={16} />
             </div>
           </Link>
 
-          {/* Card 2: Arsip */}
-          <Link to="/arsip" className="group flex flex-col justify-between p-8 bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-emerald-300 transition-all duration-300">
-            <div>
-              <div className="h-14 w-14 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 flex items-center justify-center rounded-2xl mb-6 shadow-inner border border-emerald-100/50">
-                <Archive size={28} strokeWidth={2.5} />
+          <Link to="/arsip" className="group flex flex-col p-6 bg-white border border-slate-200 rounded-xl hover:border-emerald-400 hover:ring-1 hover:ring-emerald-400 transition-all duration-200">
+            <div className="flex items-start justify-between mb-4">
+              <div className="h-12 w-12 bg-emerald-50 text-emerald-600 flex items-center justify-center rounded-lg border border-emerald-100">
+                <Archive size={24} strokeWidth={2} />
               </div>
-              <h2 className="text-xl font-bold text-slate-900 mb-3">Arsip & Riwayat</h2>
-              <p className="text-slate-500 text-sm leading-relaxed mb-8 font-medium">
-                Akses kembali database peta yang pernah diproduksi. Unduh ulang tata letak cetak (PNG) atau data vektor spasial (GeoJSON).
-              </p>
+              <ChevronRight size={20} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
             </div>
-            <div className="flex items-center justify-between mt-auto">
-              <span className="text-emerald-600 text-sm font-bold">Buka Database</span>
-              <div className="h-8 w-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                <ChevronRight size={18} />
-              </div>
+            <h2 className="text-lg font-bold text-slate-900 mb-2">Database Arsip</h2>
+            <p className="text-slate-500 text-sm leading-relaxed mb-6 font-medium">
+              Akses kembali riwayat peta yang pernah diproduksi. Unduh ulang tata letak cetak (PNG) atau data vektor (GeoJSON).
+            </p>
+            <div className="mt-auto text-emerald-600 text-sm font-bold flex items-center gap-1 group-hover:gap-2 transition-all">
+              Buka Penyimpanan <ChevronRight size={16} />
             </div>
           </Link>
 
         </div>
 
-        {/* WIDGET RECENT ACTIVITY (MODERN LIST) */}
-        <div className="w-full max-w-4xl z-10">
-          <div className="flex items-center gap-2 mb-4 px-2 text-slate-800">
-            <Activity size={18} className="text-blue-600" />
-            <h3 className="text-sm font-bold tracking-wide">Aktivitas Terakhir</h3>
+        {/* RECENT ACTIVITY (COMPACT DATA-TABLE STYLE) */}
+        <div className="w-full">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-2">
+            <div className="flex items-center gap-2 text-slate-800">
+              <Activity size={18} className="text-slate-600" />
+              <h3 className="text-sm font-bold tracking-wide">Aktivitas Render Terakhir</h3>
+            </div>
+            <Link to="/arsip" className="text-xs font-bold text-blue-600 hover:underline">Lihat Semua</Link>
           </div>
           
-          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
             {recentMaps.length > 0 ? (
               <div className="divide-y divide-slate-100">
                 {recentMaps.map((map) => (
-                  <div key={map.id} className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors group">
+                  <div key={map.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-500 group-hover:text-blue-600 group-hover:bg-blue-50 transition-colors">
-                        <FileText size={20} />
+                      <div className="text-slate-400">
+                        <FileText size={18} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900 mb-1">{map.title}</p>
+                        <p className="text-sm font-bold text-slate-800 mb-0.5">{map.title}</p>
                         <p className="text-xs text-slate-500 font-medium">Periode: {map.period}</p>
                       </div>
                     </div>
-                    <div className="text-right hidden md:block">
-                      <p className="text-xs font-bold text-slate-700 mb-1">{map.update_time}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide flex items-center justify-end gap-1">
-                        Dibuat oleh: <span className="text-slate-600">{map.creator}</span>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-slate-700 mb-0.5">{map.update_time}</p>
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        Oleh: {map.creator}
                       </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-10 text-center text-slate-500 text-sm font-semibold flex flex-col items-center gap-3">
-                <div className="p-4 bg-slate-50 rounded-full"><Archive size={24} className="text-slate-400"/></div>
-                Belum ada data arsip atau server sedang offline.
+              <div className="p-8 text-center text-slate-500 text-sm font-medium flex flex-col items-center gap-2">
+                <Archive size={24} className="text-slate-300"/>
+                {isServerOnline ? 'Belum ada data arsip peta.' : 'Menunggu koneksi server...'}
               </div>
             )}
           </div>
@@ -161,8 +162,10 @@ export default function Home() {
 
       </main>
 
-      <footer className="py-8 text-center text-xs text-slate-400 font-semibold tracking-wide">
-        &copy; 2026 BMKG Kaltim. Enterprise WebGIS Edition.
+      {/* FOOTER DIPERBARUI */}
+      <footer className="py-6 flex flex-col items-center gap-1 text-center text-xs text-slate-500 font-medium">
+        <span>&copy; 2026 Badan Meteorologi Klimatologi dan Geofisika Provinsi Kalimantan Timur.</span>
+        <span>Stasiun Meteorologi APT Pranoto Samarinda</span>
       </footer>
     </div>
   );

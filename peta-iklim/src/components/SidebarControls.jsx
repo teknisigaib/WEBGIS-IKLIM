@@ -195,7 +195,7 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
           <div className="space-y-5 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
             <div>
               <div className="flex justify-between items-center mb-2"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Power (P)</label><span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{power}</span></div>
-              <input type="range" min="0.5" max="5.0" step="0.1" value={power} onChange={(e) => setPower(parseFloat(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
+              <input type="range" min="0.1" max="10.0" step="0.1" value={power} onChange={(e) => setPower(parseFloat(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
             </div>
             <div>
               <div className="flex justify-between items-center mb-2"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Smoothing (Sigma)</label><span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{sigma}</span></div>
