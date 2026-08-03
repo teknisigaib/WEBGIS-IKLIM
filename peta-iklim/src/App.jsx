@@ -76,7 +76,7 @@ export default function App() {
     try {
       const data = new FormData();
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
-      const response = await axios.post(`${API_URL}/api/generate-map`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const response = await axios.post(`${API_URL}/generate-map`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
       
       setMapData(response.data.data);
       setAnalysisText(response.data.data.analysis_text); 
@@ -98,7 +98,7 @@ export default function App() {
       Object.keys(lastMapParams).forEach(key => data.append(key, lastMapParams[key]));
       data.append("custom_prompt", customPrompt); // Suntik instruksi tambahan
 
-      const response = await axios.post(`${API_URL}/api/regenerate-analysis`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const response = await axios.post(`${API_URL}/regenerate-analysis`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
       
       setAnalysisText(response.data.data.analysis_text);
       showToast("Teks AI berhasil diperbarui sesuai instruksi!", "success");
@@ -115,7 +115,7 @@ export default function App() {
       const data = new FormData();
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
       
-      const response = await axios.post(`${API_URL}/api/preview-print`, data, { 
+      const response = await axios.post(`${API_URL}/preview-print`, data, { 
         headers: { 'Content-Type': 'multipart/form-data' },
         responseType: 'blob' 
       });
@@ -143,7 +143,7 @@ export default function App() {
       Object.keys(pendingFormData).forEach(key => data.append(key, pendingFormData[key]));
       data.append("analysis_text", analysisText); 
 
-      const response = await axios.post(`${API_URL}/api/save-archive`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const response = await axios.post(`${API_URL}/save-archive`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
 
       const link = document.createElement('a');
       link.href = exportData.url; 
