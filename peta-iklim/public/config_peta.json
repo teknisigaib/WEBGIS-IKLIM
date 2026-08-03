@@ -1,0 +1,58 @@
+{
+  "prakiraan_hujan_dasarian": {
+    "title": "PETA PREDIKSI CURAH HUJAN",
+    "levels": [0, 10, 20, 50, 75, 100, 150, 200, 300, 1000],
+    "colors": ["#340900", "#8e2800", "#dc6200", "#efa800", "#eae100", "#e0fe7c", "#8bd48b", "#369134", "#00450c"],
+    "labels": ["Rendah", "Rendah", "Rendah", "Menengah", "Menengah", "Menengah", "Tinggi", "Tinggi", "Sangat Tinggi"],
+    "unit": "mm"
+  },
+  "prakiraan_hujan_bulanan": {
+    "title": "PETA PREDIKSI CURAH HUJAN",
+    "levels": [0, 20, 50, 100, 150, 200, 300, 400, 500, 1000],
+    "colors": ["#340900", "#8e2800", "#dc6200", "#efa800", "#eae100", "#e0fe7c", "#8bd48b", "#369134", "#00450c"],
+    "labels": ["Rendah", "Rendah", "Rendah", "Menengah", "Menengah", "Menengah", "Tinggi", "Tinggi", "Sangat Tinggi"],
+    "unit": "mm"
+  },
+  "prakiraan_sifat_dasarian": {
+    "title": "PETA PREDIKSI SIFAT HUJAN",
+    "levels": [0, 30, 50, 84, 115, 150, 200, 1000],
+    "colors": ["#4a1600", "#a85b01", "#f2c40f", "#ffff00", "#8bb700", "#238129", "#01460f"],
+    "labels": ["Bawah Normal", "Bawah Normal", "Bawah Normal", "Normal", "Atas Normal", "Atas Normal", "Atas Normal"],
+    "unit": "%"
+  },
+  "prakiraan_sifat_bulanan": {
+    "title": "PETA PREDIKSI SIFAT HUJAN",
+    "levels": [0, 30, 50, 84, 115, 150, 200, 1000],
+    "colors": ["#4a1600", "#a85b01", "#f2c40f", "#ffff00", "#8bb700", "#238129", "#01460f"],
+    "labels": ["Bawah Normal", "Bawah Normal", "Bawah Normal", "Normal", "Atas Normal", "Atas Normal", "Atas Normal"],
+    "unit": "%"
+  },
+  "analisis_hujan_dasarian": {
+    "title": "PETA ANALISIS CURAH HUJAN",
+    "levels": [0, 10, 20, 50, 75, 100, 150, 200, 300, 1000],
+    "colors": ["#340900", "#8e2800", "#dc6200", "#efa800", "#eae100", "#e0fe7c", "#8bd48b", "#369134", "#00450c"],
+    "labels": ["Rendah", "Rendah", "Rendah", "Menengah", "Menengah", "Menengah", "Tinggi", "Tinggi", "Sangat Tinggi"],
+    "unit": "mm"
+  },
+  "analisis_hujan_bulanan": {
+    "title": "PETA ANALISIS CURAH HUJAN",
+    "levels": [0, 20, 50, 100, 150, 200, 300, 400, 500, 1000],
+    "colors": ["#340900", "#8e2800", "#dc6200", "#efa800", "#eae100", "#e0fe7c", "#8bd48b", "#369134", "#00450c"],
+    "labels": ["Rendah", "Rendah", "Rendah", "Menengah", "Menengah", "Menengah", "Tinggi", "Tinggi", "Sangat Tinggi"],
+    "unit": "mm"
+  },
+  "analisis_sifat_bulanan": {
+    "title": "PETA ANALISIS SIFAT HUJAN",
+    "levels": [0, 30, 50, 84, 115, 150, 200, 1000],
+    "colors": ["#4a1600", "#a85b01", "#f2c40f", "#ffff00", "#8bb700", "#238129", "#01460f"],
+    "labels": ["Bawah Normal", "Bawah Normal", "Bawah Normal", "Normal", "Atas Normal", "Atas Normal", "Atas Normal"],
+    "unit": "%"
+  },
+  "analisis_hari_hujan_bulanan": {
+    "title": "PETA ANALISIS HARI HUJAN",
+    "levels": [0, 10, 20, 31],
+    "colors": ["#ffaa01", "#ffff02", "#4ce601"],
+    "labels": ["Rendah", "Menengah", "Tinggi"],
+    "unit": "hari"
+  }
+}
