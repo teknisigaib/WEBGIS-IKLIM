@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { MapContainer, TileLayer, GeoJSON, LayersControl, CircleMarker, Tooltip, LayerGroup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Loader2, Sliders } from 'lucide-react';
+import L from 'leaflet'; 
 
 export default function MapWorkspace({ mapData, isLoading }) {
   const centerKaltim = [0.5, 116.5];
@@ -24,6 +25,17 @@ export default function MapWorkspace({ mapData, isLoading }) {
     return { fillColor: colorHex, fillOpacity: polygonOpacity, color: colorHex, weight: 0, opacity: 1.0 };
   };
 
+  const pointToLayer = (feature, latlng) => {
+    const colorHex = feature.properties.fill || "#cccccc";
+    return L.circleMarker(latlng, {
+      radius: 8, 
+      fillColor: colorHex,
+      color: '#1e293b', 
+      weight: 1.5,
+      fillOpacity: 1
+    });
+  };
+
   const onEachFeature = (feature, layer) => {
     if (feature.properties) {
       const mapTitle = mapData?.geojson?.metadata?.map_type || 'Area Peta';
@@ -32,7 +44,6 @@ export default function MapWorkspace({ mapData, isLoading }) {
       const unit = mapData?.legend_config?.unit || 'mm'; 
       const catHtml = categoryLabel ? `<br/><span class="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1 inline-block">${categoryLabel.toUpperCase()}</span>` : "";
 
-      // Tooltip ala SaaS
       layer.bindTooltip(
         `<div style="font-family: 'Poppins', sans-serif;" class="text-center">
           <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${mapTitle}</span><br/>
@@ -43,18 +54,29 @@ export default function MapWorkspace({ mapData, isLoading }) {
       );
 
       layer.on({
-        mouseover: (e) => { const l = e.target; l.setStyle({ weight: 1.5, color: '#1e293b' }); l.bringToFront(); },
-        mouseout: (e) => { const l = e.target; l.setStyle({ weight: 0, color: feature.properties.fill }); }
+        mouseover: (e) => { 
+          const l = e.target; 
+          if(feature.geometry.type !== "Point") {
+            l.setStyle({ weight: 1.5, color: '#1e293b' }); 
+            l.bringToFront(); 
+          }
+        },
+        mouseout: (e) => { 
+          const l = e.target; 
+          if(feature.geometry.type !== "Point") {
+            l.setStyle({ weight: 0, color: feature.properties.fill }); 
+          }
+        }
       });
     }
   };
 
   const geoJsonKey = useMemo(() => mapData?.geojson?.metadata?.created_at || Date.now().toString(), [mapData]);
+  const isHTHMap = mapData?.geojson?.metadata?.map_type?.includes("TANPA HUJAN");
 
   return (
     <div style={{ fontFamily: "'Poppins', sans-serif" }} className="h-full w-full relative z-0 bg-slate-50 overflow-hidden">
       
-      {/* LOADING OVERLAY (ELEGANT GLASS) */}
       {isLoading && (
         <div className="absolute inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900/20 backdrop-blur-sm transition-all duration-300">
           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center border border-white/50 animate-fade-in-up">
@@ -63,7 +85,7 @@ export default function MapWorkspace({ mapData, isLoading }) {
               <Loader2 className="w-14 h-14 text-blue-600 animate-spin relative z-10" />
             </div>
             <h3 className="text-xl font-black text-slate-800 tracking-tight">Merender Spasial</h3>
-            <p className="text-xs text-slate-500 mt-2 font-medium text-center">Menghitung interpolasi IDW matriks...<br/>Mohon tunggu sebentar.</p>
+            <p className="text-xs text-slate-500 mt-2 font-medium text-center">Memproses data spasial...<br/>Mohon tunggu sebentar.</p>
           </div>
         </div>
       )}
@@ -75,7 +97,13 @@ export default function MapWorkspace({ mapData, isLoading }) {
           
           <LayersControl.Overlay checked name="Layer Peta Kaltim">
             {mapData && mapData.geojson && (
-              <GeoJSON key={geoJsonKey} data={mapData.geojson} style={geoJsonStyle} onEachFeature={onEachFeature} />
+              <GeoJSON 
+                key={geoJsonKey} 
+                data={mapData.geojson} 
+                style={geoJsonStyle} 
+                onEachFeature={onEachFeature} 
+                pointToLayer={pointToLayer} 
+              />
             )}
           </LayersControl.Overlay>
 
@@ -85,7 +113,7 @@ export default function MapWorkspace({ mapData, isLoading }) {
             </LayersControl.Overlay>
           )}
 
-          {mapData && mapData.raw_data && (
+          {mapData && mapData.raw_data && !isHTHMap && (
             <LayersControl.Overlay checked name="Validasi Titik Observasi">
               <LayerGroup>
                 {mapData.raw_data.map((pt, idx) => (
@@ -116,7 +144,6 @@ export default function MapWorkspace({ mapData, isLoading }) {
         </LayersControl>
       </MapContainer>
 
-      {/* LEGENDA PETA (GLASSMORPHISM) */}
       {mapData && mapData.legend_config && (
         <div className="absolute bottom-8 left-8 z-[1000] bg-white/85 backdrop-blur-xl p-5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/60 min-w-[260px] animate-fade-in-up">
           <div className="border-b border-slate-200/60 pb-3 mb-3">
@@ -132,7 +159,13 @@ export default function MapWorkspace({ mapData, isLoading }) {
               const labels = mapData.legend_config.labels || [];
               if (index === levels.length - 1) return null;
               
-              const labelAngka = levels[index + 1] < 1000 ? `${levels[index]} - ${levels[index + 1]}` : `> ${levels[index]}`;
+              let labelAngka = levels[index + 1] < 1000 ? `${levels[index]} - ${levels[index + 1]}` : `> ${levels[index]}`;
+              
+              // --- PENGGUNAAN CUSTOM RANGES DARI JSON ---
+              if (mapData.legend_config.custom_ranges && mapData.legend_config.custom_ranges[index]) {
+                labelAngka = mapData.legend_config.custom_ranges[index];
+              }
+
               const unit = mapData.legend_config.unit || 'mm';
               const labelKategori = labels[index] ? labels[index] : "";
               
@@ -150,8 +183,7 @@ export default function MapWorkspace({ mapData, isLoading }) {
         </div>
       )}
 
-      {/* CONTROL SLIDER OPACITY (GLASSMORPHISM) */}
-      {mapData && (
+      {mapData && !isHTHMap && (
         <div className="absolute bottom-8 right-8 z-[1000] bg-white/85 backdrop-blur-xl p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/60 w-56 animate-fade-in-up">
           <div className="flex items-center gap-2 mb-3 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
             <div className="bg-white p-1 rounded shadow-sm"><Sliders size={14} className="text-blue-600" /></div>

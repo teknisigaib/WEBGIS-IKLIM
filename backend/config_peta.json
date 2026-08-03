@@ -54,5 +54,28 @@
     "colors": ["#ffaa01", "#ffff02", "#4ce601"],
     "labels": ["Rendah", "Menengah", "Tinggi"],
     "unit": "hari"
+  },
+  "sebaran_hujan_harian": {
+    "title": "PETA SEBARAN CURAH HUJAN HARIAN",
+    "levels": [0, 0.5, 20, 50, 100, 150, 1000],
+    "colors": ["#b2b2b2", "#55ff00", "#ffff00", "#ff5500", "#fe0000", "#aa00e5"],
+    "labels": ["Tidak Ada Hujan", "Hujan Ringan", "Hujan Sedang", "Hujan Lebat", "Hujan Sangat Lebat", "Hujan Ekstrem"],
+    "unit": "mm/hari"
+  },
+  "hari_tanpa_hujan": {
+    "title": "PETA HARI TANPA HUJAN",
+    "levels": [0, 1, 6, 11, 21, 31, 61, 1000],
+    "colors": ["#1b7a1b", "#90ea7e", "#ffff00", "#c48821", "#593c0d", "#ffb2bc", "#ff0000"],
+    "labels": [
+      "Masih ada hujan", 
+      "Sangat Pendek", 
+      "Pendek", 
+      "Menengah", 
+      "Panjang", 
+      "Sangat Panjang", 
+      "Kekeringan Ekstrim"
+    ],
+    "custom_ranges": ["0", "1 - 5", "6 - 10", "11 - 20", "21 - 30", "31 - 60", "> 60"],
+    "unit": "hari"
   }
 }

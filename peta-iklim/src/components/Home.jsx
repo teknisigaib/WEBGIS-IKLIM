@@ -74,10 +74,10 @@ export default function Home() {
             <BarChart2 size={14}/> Dasbor Operasional
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-3">
-            Pusat Kendali Pemetaan Iklim
+            WEBGIS Pemetaan Data Iklim
           </h1>
           <p className="text-sm text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
-            Sistem otomatisasi pengolahan data curah hujan dan sifat hujan menggunakan algoritma interpolasi IDW spasial. Terintegrasi dengan AI untuk analisis laporan instan.
+            Sistem otomatisasi pengolahan prakiraan dan analisis menggunakan algoritma interpolasi IDW spasial.
           </p>
         </div>
 

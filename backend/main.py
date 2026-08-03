@@ -93,6 +93,20 @@ except:
     boundary_file = None
     kaltim_area = None
 
+def get_hth_color(val, levels, colors):
+    try:
+        val = float(val)
+        if val == 0: return colors[0]          
+        elif 1 <= val <= 5: return colors[1]   
+        elif 6 <= val <= 10: return colors[2]  
+        elif 11 <= val <= 20: return colors[3] 
+        elif 21 <= val <= 30: return colors[4] 
+        elif 31 <= val <= 60: return colors[5] 
+        elif val > 60: return colors[6]        
+    except:
+        pass
+    return colors[0] 
+
 def get_or_calculate_idw(content, sigma, power, col_lon="LON", col_lat="LAT", col_val="VAL"):
     grid_x, grid_y = np.mgrid[113.0:120.0:200j, -3.0:3.2:200j]
     try: 
@@ -301,16 +315,10 @@ def clean_and_inject_geojson(geojson_str, map_config, category, period, update_t
         
     return geojson_dict
 
-# ==============================================================================
-# PERBAIKAN ENGINE RENDER MATPLOTLIB: LAYOUT BAKU BMKG (ANTI BERANTAKAN)
-# ==============================================================================
 def format_lon(x, pos): return f"{int(x)}°0'0\"E"
 def format_lat(y, pos): return f"{abs(int(y))}°0'0\"{ 'N' if y>=0 else 'S' }"
 
-# ==============================================================================
-# PERBAIKAN ENGINE RENDER MATPLOTLIB: LAYOUT BAKU BMKG (ANTI BERANTAKAN)
-# ==============================================================================
-def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, creator):
+def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, creator, df_points=None):
     levels, colors = map_config["levels"], map_config["colors"]
     labels = map_config.get("labels", [])
     unit = map_config.get("unit", "mm")
@@ -322,41 +330,53 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     
     gs = GridSpec(1, 2, width_ratios=[2.2, 1], wspace=0.06, left=0.03, right=0.98, top=0.98, bottom=0.02)
 
-    # ----------------------------------------------------
-    # PANEL KIRI: AREA PETA
-    # ----------------------------------------------------
     ax_map = fig.add_subplot(gs[0])
     ax_map.set_facecolor('#8be1ff') 
     for spine in ax_map.spines.values(): spine.set_linewidth(1)
     
-    # --- 1. LAYER DARATAN LUAR NEGERI (Z-Order 1) ---
     try:
         malaysia = gpd.read_file('malaysia.json')
         malaysia.plot(ax=ax_map, color='#808080', edgecolor='none', zorder=1)
     except: pass
 
-    # --- 2. LAYER DARATAN INDONESIA (Z-Order 2) ---
     try: 
         indo = gpd.read_file('indonesia.json')
         indo.plot(ax=ax_map, color='#cccccc', edgecolor='none', zorder=2)
     except: pass
     
-    # --- 3. LAYER GRADASI HUJAN (Z-Order 3) ---
-    ax_map.contourf(grid_x, grid_y, grid_z, levels=levels, cmap=ListedColormap(colors), norm=BoundaryNorm(levels, len(colors)), antialiased=True, zorder=3)
+    map_title_upper = map_config['title'].upper()
+    is_hth = "HARI TANPA HUJAN" in map_title_upper
+
+    # ---> INI BARIS IF YANG HILANG <---
+    if is_hth and df_points is not None:
+        
+        # ---> INI BARIS BACKGROUND KUNING YANG HILANG (Pakai boundary_file) <---
+        if boundary_file is not None: 
+            boundary_file.plot(ax=ax_map, color='#ffffd9', edgecolor='none', zorder=3)
+        
+        # Looping titiknya
+        for _, row in df_points.iterrows():
+            val = row.get('VAL', 0)
+            
+            # Panggil fungsi get_hth_color biar warnanya 100% sama dengan preview
+            warna = get_hth_color(val, levels, colors) 
+            
+            ax_map.scatter(row['LON'], row['LAT'], color=warna, edgecolor='black', s=55, zorder=6, linewidth=1)
     
-    # --- 4. LAYER BATAS KAB/KOTA KALTIM (Titik Hitam, Z-Order 4) ---
+    else:
+        # Peta normal (IDW)
+        if grid_x is not None:
+            ax_map.contourf(grid_x, grid_y, grid_z, levels=levels, cmap=ListedColormap(colors), norm=BoundaryNorm(levels, len(colors)), antialiased=True, zorder=3)
+    
     if boundary_file is not None: 
         boundary_file.boundary.plot(ax=ax_map, color='black', linewidth=1.0, linestyle=':', zorder=4)
         
-    # --- 5. LAYER BATAS PROVINSI DARAT (Merah Putus-Putus, Z-Order 5) ---
     try:
         indo.boundary.plot(ax=ax_map, color='red', linewidth=1, linestyle='--', zorder=5)
     except: pass
     if kaltim_area is not None: 
         gpd.GeoSeries([kaltim_area]).boundary.plot(ax=ax_map, color='red', linewidth=1, linestyle='--', zorder=5)
 
-    # --- 6. LAYER GARIS PANTAI (Hitam Tebal Solid, Z-Order 6) ---
-    # Pakai .buffer(0) untuk fixing geometry cacat sebelum di-lebur (unary_union)
     try:
         if 'malaysia' in locals():
             malaysia_fix = malaysia.copy()
@@ -371,9 +391,6 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
             gpd.GeoSeries([indo_fix.unary_union]).boundary.plot(ax=ax_map, color='black', linewidth=2, linestyle='-', zorder=6)
     except: pass
     
-    # ----------------------------------------------------
-    # Teks Label & Koordinat
-    # ----------------------------------------------------
     for reg in REGION_DATA: ax_map.text(reg['lon'], reg['lat'], reg['nama'].replace("Kota ", ""), fontsize=6.5, color='black', ha='center', va='center', zorder=7)
     
     ax_map.text(116.5, 2.6, "KALTARA", fontsize=10, fontweight='bold', ha='center', va='center', color='black', zorder=7)
@@ -395,16 +412,10 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
         for y in [-2, 0, 2]:
             ax_map.plot(x, y, marker='+', color='black', markersize=8, lw=1, zorder=7)
 
-    # ----------------------------------------------------
-    # PANEL KANAN: TABEL KETERANGAN (SISTEM KAVLING PRESISI)
-    # ----------------------------------------------------
     ax_info = fig.add_subplot(gs[1])
     ax_info.axis('off')
     
-    # --- KAVLING 1: HEADER (0.72 - 1.0) ---
     ax_info.add_patch(patches.Rectangle((0, 0.72), 1, 0.28, transform=ax_info.transAxes, facecolor='white', ec='black', lw=2))
-    
-    map_title_upper = map_config['title'].upper()
     
     plt.text(0.5, 0.97, map_title_upper, ha='center', va='center', transform=ax_info.transAxes, fontweight='bold', fontsize=9)
     plt.text(0.5, 0.945, period.upper(), ha='center', va='center', transform=ax_info.transAxes, fontweight='bold', fontsize=9)
@@ -419,7 +430,6 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     bmkg_text = "BADAN METEOROLOGI KLIMATOLOGI DAN GEOFISIKA\nSTASIUN METEOROLOGI KELAS II\nAJI PANGERAN TUMENGGUNG PRANOTO\nSAMARINDA - KALIMANTAN TIMUR"
     plt.text(0.5, 0.73, bmkg_text, ha='center', va='bottom', transform=ax_info.transAxes, fontsize=5.5, fontweight='bold', linespacing=1.2)
 
-    # --- KAVLING 2: KETERANGAN WILAYAH (0.58 - 0.71) ---
     ax_info.add_patch(patches.Rectangle((0, 0.58), 1, 0.13, transform=ax_info.transAxes, facecolor='white', ec='black', lw=2))
     plt.text(0.5, 0.675, "KETERANGAN :", ha='center', transform=ax_info.transAxes, fontweight='bold', fontsize=9)
     
@@ -435,7 +445,6 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     ax_info.plot([0.55, 0.65], [0.605, 0.605], color='black', ls=':', lw=1.5, transform=ax_info.transAxes)
     plt.text(0.68, 0.605, "Batas Kab/Kota", va='center', transform=ax_info.transAxes, fontsize=8)
 
-    # --- KAVLING 3: TABEL LEGENDA (0.20 - 0.57) ---
     box_3_top = 0.57
     box_3_bottom = 0.20 
     
@@ -443,6 +452,8 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     
     judul_legenda = "SIFAT HUJAN (%) :" if "%" in unit else f"{map_title_upper.split(' ')[-1]} ({unit}) :"
     if "HARI HUJAN" in map_title_upper: judul_legenda = "HARI HUJAN (hari) :"
+    if "HARIAN" in map_title_upper: judul_legenda = f"CURAH HUJAN ({unit}) :"
+    if "HARI TANPA HUJAN" in map_title_upper: judul_legenda = f"HARI TANPA HUJAN ({unit}) :"
     
     plt.text(0.5, box_3_top - 0.03, judul_legenda, ha='center', transform=ax_info.transAxes, fontweight='bold', fontsize=9)
     ax_info.plot([0, 1], [box_3_top - 0.05, box_3_top - 0.05], color='black', lw=2, transform=ax_info.transAxes)
@@ -468,7 +479,13 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
         y_bot = y_cursor - row_h
         
         ax_info.add_patch(patches.Rectangle((0.05, y_bot + (row_h*0.1)), 0.15, row_h*0.8, facecolor=color, ec='black', lw=1, transform=ax_info.transAxes))
-        text_range = f"{levels[i]} - {levels[i+1]}" if levels[i+1] < 1000 else f"> {levels[i]}"
+        
+        # --- PENGGUNAAN CUSTOM RANGES DARI JSON ---
+        if "custom_ranges" in map_config and i < len(map_config["custom_ranges"]):
+            text_range = map_config["custom_ranges"][i]
+        else:
+            text_range = f"{levels[i]} - {levels[i+1]}" if levels[i+1] < 1000 else f"> {levels[i]}"
+        
         plt.text(0.25, (y_top + y_bot)/2, text_range, va='center', transform=ax_info.transAxes, fontsize=9)
         
         if labels:
@@ -487,12 +504,11 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
             y_end = (box_3_top - 0.05) - ((end_idx + 1) * row_h)
             y_center = (y_start + y_end) / 2
             
-            plt.text(0.75, y_center, label.upper(), ha='center', va='center', transform=ax_info.transAxes, fontweight='bold', fontsize=9)
+            plt.text(0.75, y_center, label, ha='center', va='center', transform=ax_info.transAxes, fontsize=9)
             
             if y_end > box_3_bottom + 0.001:
                 ax_info.plot([0.5, 1], [y_end, y_end], color='black', lw=1, transform=ax_info.transAxes)
 
-    # --- KAVLING 4: KOTAK FOOTER (0.0 - 0.19) ---
     ax_info.add_patch(patches.Rectangle((0, 0.0), 1, 0.19, transform=ax_info.transAxes, facecolor='white', ec='black', lw=2))
     
     try: 
@@ -527,6 +543,7 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     buf.seek(0)
     return buf
 
+
 @app.get("/download-template")
 async def download_template():
     return Response("LON,LAT,VAL\n117.15,-0.50,150", media_type="text/csv", headers={"Content-Disposition": "attachment; filename=template_bmkg.csv"})
@@ -536,17 +553,57 @@ async def generate_map(file: UploadFile = File(...), sigma: float = Form(2.0), p
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     map_config = MAP_CONFIGS[category]
     
-    grid_x, grid_y, grid_z, df_valid = get_or_calculate_idw(await file.read(), sigma, power, col_lon, col_lat, col_val)
-    raw_data = df_valid[['LON', 'LAT', 'VAL']].to_dict(orient='records')
-    ai_text = generate_ai_analysis(grid_x, grid_y, grid_z, map_config['title'], period, update_time, map_config)
+    file_bytes = await file.read() 
     
-    fig, ax = plt.subplots() 
-    contour = ax.contourf(grid_x, grid_y, grid_z, levels=map_config["levels"], cmap=ListedColormap(map_config["colors"]), norm=BoundaryNorm(map_config["levels"], len(map_config["colors"])))
-    geojson_str = geojsoncontour.contourf_to_geojson(contourf=contour, min_angle_deg=3.0, ndigits=5)
-    plt.close(fig)
-    
-    clean_geojson = clean_and_inject_geojson(geojson_str, map_config, category, period, update_time, creator, ai_text)
-    
+    if category == "hari_tanpa_hujan":
+        import pandas as pd
+        import io
+        
+        df_valid = pd.read_csv(io.BytesIO(file_bytes))
+        df_valid = df_valid.rename(columns={col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL'})
+        raw_data = df_valid[['LON', 'LAT', 'VAL']].to_dict(orient='records')
+        
+        features = []
+        for _, row in df_valid.iterrows():
+            val = row['VAL']
+            warna = get_hth_color(val, map_config["levels"], map_config["colors"])
+            features.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [row['LON'], row['LAT']]},
+                "properties": {
+                    "val": val,
+                    "fill": warna,
+                    "range_text": f"{val}",
+                    "category": category.replace("_", " ").title()
+                }
+            })
+            
+        ai_text = f"Peta Hari Tanpa Hujan (HTH) periode {period} di Kalimantan Timur menampilkan sebaran titik observasi tanpa interpolasi spasial."
+        
+        clean_geojson = {
+            "type": "FeatureCollection", 
+            "features": features,
+            "metadata": {
+                "map_type": map_config["title"],
+                "period": period,
+                "update_time": update_time,
+                "creator": creator,
+                "ai_analysis": ai_text
+            }
+        }
+        
+    else:
+        grid_x, grid_y, grid_z, df_valid = get_or_calculate_idw(file_bytes, sigma, power, col_lon, col_lat, col_val)
+        raw_data = df_valid[['LON', 'LAT', 'VAL']].to_dict(orient='records')
+        ai_text = generate_ai_analysis(grid_x, grid_y, grid_z, map_config['title'], period, update_time, map_config)
+        
+        fig, ax = plt.subplots() 
+        contour = ax.contourf(grid_x, grid_y, grid_z, levels=map_config["levels"], cmap=ListedColormap(map_config["colors"]), norm=BoundaryNorm(map_config["levels"], len(map_config["colors"])))
+        geojson_str = geojsoncontour.contourf_to_geojson(contourf=contour, min_angle_deg=3.0, ndigits=5)
+        plt.close(fig)
+        
+        clean_geojson = clean_and_inject_geojson(geojson_str, map_config, category, period, update_time, creator, ai_text)
+        
     return {
         "status": "success", 
         "data": { "geojson": clean_geojson, "legend_config": map_config, "analysis_text": ai_text, "raw_data": raw_data }
@@ -566,33 +623,73 @@ async def regenerate_analysis(file: UploadFile = File(...), sigma: float = Form(
 async def preview_print(file: UploadFile = File(...), sigma: float = Form(2.0), power: float = Form(2.0), category: str = Form(...), period: str = Form(...), update_time: str = Form(...), creator: str = Form("TIM FORECASTER"), col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL")):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     
-    grid_x, grid_y, grid_z, _ = get_or_calculate_idw(await file.read(), sigma, power, col_lon, col_lat, col_val)
-    buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
+    file_bytes = await file.read()
+    
+    if category == "hari_tanpa_hujan":
+        df_valid = pd.read_csv(io.BytesIO(file_bytes))
+        df_valid = df_valid.rename(columns={col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL'})
+        buf = draw_print_layout(None, None, None, MAP_CONFIGS[category], period, update_time, creator, df_points=df_valid)
+    else:
+        grid_x, grid_y, grid_z, _ = get_or_calculate_idw(file_bytes, sigma, power, col_lon, col_lat, col_val)
+        buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
     
     return Response(content=buf.getvalue(), media_type="image/png")
 
 @app.post("/save-archive")
 async def save_archive(file: UploadFile = File(...), sigma: float = Form(2.0), power: float = Form(2.0), category: str = Form(...), period: str = Form(...), update_time: str = Form(...), creator: str = Form("TIM FORECASTER"), analysis_text: str = Form(""), col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL")):
     content = await file.read()
-    grid_x, grid_y, grid_z, _ = get_or_calculate_idw(content, sigma, power, col_lon, col_lat, col_val)
     filename_base = f"{category}_{period.replace(' ', '_').upper()}_{int(time.time())}" 
     
     with open(os.path.join(CSV_DIR, f"{filename_base}.csv"), "wb") as f_csv: f_csv.write(content)
-    buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
-    with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
     
-    fig, ax = plt.subplots() 
-    contour = ax.contourf(grid_x, grid_y, grid_z, levels=MAP_CONFIGS[category]["levels"], cmap=ListedColormap(MAP_CONFIGS[category]["colors"]), norm=BoundaryNorm(MAP_CONFIGS[category]["levels"], len(MAP_CONFIGS[category]["colors"])))
-    geojson_str = geojsoncontour.contourf_to_geojson(contourf=contour, min_angle_deg=3.0, ndigits=5)
-    plt.close(fig)
-    
-    clean_geojson = clean_and_inject_geojson(geojson_str, MAP_CONFIGS[category], category, period, update_time, creator, analysis_text)
+    if category == "hari_tanpa_hujan":
+        df_valid = pd.read_csv(io.BytesIO(content))
+        df_valid = df_valid.rename(columns={col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL'})
+        
+        buf = draw_print_layout(None, None, None, MAP_CONFIGS[category], period, update_time, creator, df_points=df_valid)
+        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
+        
+        features = []
+        for _, row in df_valid.iterrows():
+            val = row['VAL']
+            warna = get_hth_color(val, MAP_CONFIGS[category]["levels"], MAP_CONFIGS[category]["colors"])
+            features.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [row['LON'], row['LAT']]},
+                "properties": {
+                    "val": val, "fill": warna, "range_text": f"{val}",
+                    "category": category.replace("_", " ").title()
+                }
+            })
+        clean_geojson = {
+            "type": "FeatureCollection", "features": features,
+            "metadata": {
+                "map_type": MAP_CONFIGS[category]["title"],
+                "period": period, "update_time": update_time,
+                "creator": creator, "ai_analysis": analysis_text
+            }
+        }
+        
+    else:
+        grid_x, grid_y, grid_z, _ = get_or_calculate_idw(content, sigma, power, col_lon, col_lat, col_val)
+        
+        buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
+        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
+        
+        fig, ax = plt.subplots() 
+        contour = ax.contourf(grid_x, grid_y, grid_z, levels=MAP_CONFIGS[category]["levels"], cmap=ListedColormap(MAP_CONFIGS[category]["colors"]), norm=BoundaryNorm(MAP_CONFIGS[category]["levels"], len(MAP_CONFIGS[category]["colors"])))
+        geojson_str = geojsoncontour.contourf_to_geojson(contourf=contour, min_angle_deg=3.0, ndigits=5)
+        plt.close(fig)
+        
+        clean_geojson = clean_and_inject_geojson(geojson_str, MAP_CONFIGS[category], category, period, update_time, creator, analysis_text)
+        
     with open(os.path.join(GEOJSON_DIR, f"{filename_base}.json"), "w") as f_json: json.dump(clean_geojson, f_json)
 
     conn = get_db_connection()
     conn.execute('INSERT INTO saved_maps (title, category, period, update_time, sigma, power, creator, analysis_text, filename_base) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
                  (MAP_CONFIGS[category]['title'], category, period, update_time, sigma, power, creator, analysis_text, filename_base))
     conn.commit(); conn.close()
+    
     return {"status": "success", "filename": f"{filename_base}.png"}
 
 @app.get("/archives")
