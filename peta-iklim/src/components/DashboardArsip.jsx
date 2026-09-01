@@ -259,6 +259,15 @@ export default function DashboardArsip() {
                             <button onClick={() => handleDownloadFile('csv', item.filename_base)} className="text-[11px] font-bold text-slate-600 bg-white hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm">
                               <FileSpreadsheet size={14} className="text-slate-400 group-hover:text-blue-500 transition-colors"/> CSV
                             </button>
+                            
+                            {/* --- TOMBOL TIF BARU (Disembunyikan khusus HTH) --- */}
+                            {item.category !== "hari_tanpa_hujan" && (
+                              <button onClick={() => handleDownloadFile('tif', item.filename_base)} className="text-[11px] font-bold text-slate-600 bg-white hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm" title="Download GeoTIFF">
+                                <Download size={14} className="text-slate-400 group-hover:text-blue-500 transition-colors"/> TIF
+                              </button>
+                            )}
+                            {/* ------------------------------------------------ */}
+                            
                           </div>
                         </td>
                         <td className="px-6 py-4">
