@@ -15,6 +15,7 @@ import json
 import geojsoncontour
 from datetime import datetime, timezone
 import os
+
 # --- BYPASS KONFLIK POSTGIS & RASTERIO DI WINDOWS ---
 if 'PROJ_LIB' in os.environ:
     del os.environ['PROJ_LIB']
@@ -26,6 +27,7 @@ from rasterio.transform import from_bounds
 
 # Import variabel Kaltim yang udah di-load dari config.py
 from config import boundary_file, kaltim_area, REGION_DATA
+
 
 def get_hth_color(val, levels, colors):
     try:
@@ -40,6 +42,7 @@ def get_hth_color(val, levels, colors):
     except:
         pass
     return colors[0] 
+
 
 def get_or_calculate_idw(content, sigma, power, col_lon="LON", col_lat="LAT", col_val="VAL"):
     grid_x, grid_y = np.mgrid[113.0:120.0:800j, -3.0:3.2:800j]
@@ -75,6 +78,7 @@ def get_or_calculate_idw(content, sigma, power, col_lon="LON", col_lat="LAT", co
         
     return grid_x, grid_y, grid_z, df
 
+
 def clean_and_inject_geojson(geojson_str, map_config, category, period, update_time, creator, analysis_text=""):
     geojson_dict = json.loads(geojson_str)
     unit_val = map_config.get("unit", "mm")
@@ -87,9 +91,9 @@ def clean_and_inject_geojson(geojson_str, map_config, category, period, update_t
         v_min, v_max = levels[i], levels[i+1]
         range_txt = f"{v_min} - {v_max}" if v_max < 1000 else f"> {v_min}"
         
-        # Override pakai custom_ranges kalau ada di json
+        # Override pakai custom_ranges kalau ada di json (sekaligus hapus spasi berlebih)
         if "custom_ranges" in map_config and i < len(map_config["custom_ranges"]):
-            range_txt = map_config["custom_ranges"][i]
+            range_txt = map_config["custom_ranges"][i].strip()
             
         legend_info.append({
             "min_value": v_min, "max_value": v_max, "range_text": range_txt,
@@ -106,13 +110,19 @@ def clean_and_inject_geojson(geojson_str, map_config, category, period, update_t
         "unit": unit_val,
         "province": "Kalimantan Timur",
         "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "author": "Stasiun Meteorologi Kelas III Aji Pangeran Tumenggung Pranoto - Samarinda",
+        "author": "Stasiun Meteorologi Kelas II Aji Pangeran Tumenggung Pranoto - Samarinda",
         "analysis_text": analysis_text, 
         "legend": legend_info 
     }
     
-    for feature in geojson_dict["features"]:
-        range_text = feature["properties"].get("title", "")
+    valid_features = []
+    
+    for idx, feature in enumerate(geojson_dict["features"]):
+        # 1. Tambahkan ID unik sesuai standar RFC 7946
+        feature["id"] = f"{category}_{idx}"
+        
+        # 2. Bersihkan trailing space (spasi berlebih) pada teks rentang
+        range_text = feature["properties"].get("title", "").strip()
         val_str = range_text.replace(" ", "")
         
         if "-" in val_str:
@@ -131,7 +141,7 @@ def clean_and_inject_geojson(geojson_str, map_config, category, period, update_t
                 if i < len(colors): color_hex = colors[i]
                 # Benerin teks rentang geojson sesuai custom_ranges
                 if "custom_ranges" in map_config and i < len(map_config["custom_ranges"]):
-                    range_text = map_config["custom_ranges"][i]
+                    range_text = map_config["custom_ranges"][i].strip()
                 break
                 
         feature["properties"] = {
@@ -140,10 +150,36 @@ def clean_and_inject_geojson(geojson_str, map_config, category, period, update_t
             "stroke": color_hex, "stroke-width": 0, "stroke-opacity": 1.0
         }
         
+        # 3. Filter Pembersih Geometri (Quality Control Area)
+        geom_type = feature["geometry"]["type"]
+        coords = feature["geometry"]["coordinates"]
+        valid_coords = []
+        
+        if geom_type == "MultiPolygon":
+            for polygon in coords:
+                # Hanya simpan ring (batas poligon) yang punya 4 titik atau lebih
+                valid_polygon = [ring for ring in polygon if len(ring) >= 4]
+                if valid_polygon:
+                    valid_coords.append(valid_polygon)
+            
+            # Update koordinat dengan data yang sudah bersih dari garis tak berluas
+            feature["geometry"]["coordinates"] = valid_coords
+        
+        # Jika setelah dibersihkan ternyata area luasan habis (nol), buang dari fitur JSON
+        if not valid_coords:
+            continue
+            
+        valid_features.append(feature)
+        
+    # Timpa features lama dengan array valid_features yang sehat dan valid
+    geojson_dict["features"] = valid_features
+        
     return geojson_dict
+
 
 def format_lon(x, pos): return f"{int(x)}°0'0\"E"
 def format_lat(y, pos): return f"{abs(int(y))}°0'0\"{ 'N' if y>=0 else 'S' }"
+
 
 def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, creator, df_points=None):
     levels, colors = map_config["levels"], map_config["colors"]
@@ -152,7 +188,7 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     
     fig = plt.figure(figsize=(10.52, 7.44), dpi=150, facecolor='white')
     fig.patch.set_linewidth(0)
-    fig.add_artist(patches.Rectangle((0, 0), 1, 1, transform=fig.transFigure, facecolor='none', edgecolor='black', linewidth=3, clip_on=False))
+    fig.add_artist(patches.Rectangle((0, 0), 1, 1, transform=fig.transFigure, facecolor='none', edgecolor='black', linewidth=2, clip_on=False))
     
     gs = GridSpec(1, 2, width_ratios=[2.2, 1], wspace=0.06, left=0.03, right=0.98, top=0.98, bottom=0.02)
     ax_map = fig.add_subplot(gs[0])
@@ -166,23 +202,47 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
 
     try: 
         indo = gpd.read_file('indonesia.json')
-        indo.plot(ax=ax_map, color='#cccccc', edgecolor='none', zorder=2, linewidth=0.5)
+        indo.plot(ax=ax_map, color='#cccccc', edgecolor='none', zorder=1, linewidth=0.5)
     except: pass
+    
+    # Plot background warna daratan Kaltim
+    if kaltim_area is not None:
+        gpd.GeoSeries([kaltim_area]).plot(ax=ax_map, color='#ffffbe', zorder=2)
     
     map_title_upper = map_config['title'].upper()
     is_hth = "HARI TANPA HUJAN" in map_title_upper
 
-    if is_hth and df_points is not None:
-        if boundary_file is not None: 
-            boundary_file.plot(ax=ax_map, color='#ffffd9', edgecolor='none', zorder=3)
-        
+    # ---------------------------------------------------------
+    # PLOT DATA (IDW KONTUR ATAU TITIK HTH)
+    # ---------------------------------------------------------
+    if df_points is not None:
+        # MODE HTH: Gambar titik observasi beserta namanya
         for _, row in df_points.iterrows():
-            val = row.get('VAL', 0)
-            warna = get_hth_color(val, levels, colors) 
-            ax_map.scatter(row['LON'], row['LAT'], color=warna, edgecolor='black', s=55, zorder=6, linewidth=1)
+            val = row['VAL']
+            lon = row['LON']
+            lat = row['LAT']
+            
+            # Ambil nama lokasi (jika ada)
+            nama_lokasi = row.get('NAMA_LOKASI', '')
+            
+            # Dapatkan warna sesuai rentang nilai
+            warna = get_hth_color(val, map_config["levels"], map_config["colors"])
+            
+            # 1. Gambar titik bulat (Scatter) - Ukuran diubah jadi 70
+            ax_map.scatter(lon, lat, c=warna, s=50, edgecolors='black', linewidths=0.5, zorder=5)
+            
+            
+            
     else:
-        if grid_x is not None:
-            ax_map.contourf(grid_x, grid_y, grid_z, levels=levels, cmap=ListedColormap(colors), norm=BoundaryNorm(levels, len(colors)), antialiased=True, zorder=3)
+        # MODE INTERPOLASI: Gambar kontur warna IDW
+        contour = ax_map.contourf(
+            grid_x, grid_y, grid_z,
+            levels=map_config["levels"],
+            colors=map_config["colors"],
+            extend='max',
+            alpha=0.9,
+            zorder=3  # Diubah jadi 3 agar berada di atas layer #ffffbe
+        )
     
     if boundary_file is not None: 
         boundary_file.boundary.plot(ax=ax_map, color='black', linewidth=1.0, linestyle=':', zorder=4)
@@ -353,6 +413,7 @@ def draw_print_layout(grid_x, grid_y, grid_z, map_config, period, update_time, c
     plt.close(fig)
     buf.seek(0)
     return buf
+
 
 def save_to_tiff(grid_x, grid_y, grid_z, filepath):
     """Fungsi untuk mencetak hasil IDW menjadi file GeoTIFF (.tif)"""

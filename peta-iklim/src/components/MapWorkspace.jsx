@@ -11,11 +11,20 @@ export default function MapWorkspace({ mapData, isLoading }) {
   const [polygonOpacity, setPolygonOpacity] = useState(0.85);
   const [batasKab, setBatasKab] = useState(null);
 
+  // OPTIMASI: Mencegah Memory Leak jika komponen di-unmount sebelum fetch selesai
   useEffect(() => {
+    let isMounted = true; 
+    
     fetch('/kaltim.json')
       .then(res => res.json())
-      .then(data => setBatasKab(data))
+      .then(data => {
+        if (isMounted) setBatasKab(data);
+      })
       .catch(err => console.error("Gagal memuat batas kabupaten:", err));
+      
+    return () => {
+      isMounted = false; // Cleanup function
+    };
   }, []);
 
   const batasKabStyle = { fillColor: 'transparent', color: '#1e293b', weight: 1.5, opacity: 0.6, dashArray: '6, 6', fillOpacity: 0 };

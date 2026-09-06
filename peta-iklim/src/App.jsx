@@ -11,6 +11,9 @@ import Home from './components/Home';
 
 export const API_URL = import.meta.env.VITE_API_BASE_URL;
 
+// Gembok rahasia yang sama dengan di routes.py backend
+const API_KEY = "Administrator96607"; 
+
 export default function App() {
   const [mapData, setMapData] = useState(null);
   const [analysisText, setAnalysisText] = useState(""); 
@@ -76,7 +79,14 @@ export default function App() {
     try {
       const data = new FormData();
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
-      const response = await axios.post(`${API_URL}/generate-map`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      
+      // ⚠️ Gembok dipasang di sini!
+      const response = await axios.post(`${API_URL}/generate-map`, data, { 
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'x-api-key': API_KEY 
+        } 
+      });
       
       setMapData(response.data.data);
       setAnalysisText(response.data.data.analysis_text); 
@@ -98,7 +108,13 @@ export default function App() {
       Object.keys(lastMapParams).forEach(key => data.append(key, lastMapParams[key]));
       data.append("custom_prompt", customPrompt); // Suntik instruksi tambahan
 
-      const response = await axios.post(`${API_URL}/regenerate-analysis`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // ⚠️ Gembok dipasang di sini!
+      const response = await axios.post(`${API_URL}/regenerate-analysis`, data, { 
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'x-api-key': API_KEY 
+        } 
+      });
       
       setAnalysisText(response.data.data.analysis_text);
       showToast("Teks AI berhasil diperbarui sesuai instruksi!", "success");
@@ -115,8 +131,12 @@ export default function App() {
       const data = new FormData();
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
       
+      // ⚠️ Gembok dipasang di sini!
       const response = await axios.post(`${API_URL}/preview-print`, data, { 
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'x-api-key': API_KEY 
+        },
         responseType: 'blob' 
       });
       
@@ -143,7 +163,13 @@ export default function App() {
       Object.keys(pendingFormData).forEach(key => data.append(key, pendingFormData[key]));
       data.append("analysis_text", analysisText); 
 
-      const response = await axios.post(`${API_URL}/save-archive`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      // ⚠️ Gembok dipasang di sini!
+      const response = await axios.post(`${API_URL}/save-archive`, data, { 
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'x-api-key': API_KEY 
+        } 
+      });
 
       const link = document.createElement('a');
       link.href = exportData.url; 
@@ -242,7 +268,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* BAR KUSTOMISASI AI (FITUR BARU ADA DI SINI) */}
+                    {/* BAR KUSTOMISASI AI */}
                     <div className="flex gap-2 mb-3 shrink-0">
                       <div className="relative flex-1">
                         <Sparkles size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" />

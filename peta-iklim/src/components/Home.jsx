@@ -5,6 +5,14 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
+// Konfigurasi Header untuk nembus gembok keamanan Backend
+const API_KEY = "Administrator96607"; // Gembok rahasia yang sama dengan di routes.py backend
+const axiosConfig = {
+  headers: {
+    "x-api-key": API_KEY
+  }
+};
+
 export default function Home() {
   const [time, setTime] = useState(new Date());
   const [recentMaps, setRecentMaps] = useState([]);
@@ -20,9 +28,13 @@ export default function Home() {
   useEffect(() => {
     const fetchRecent = async () => {
       try {
-        const response = await axios.get(`${API_URL}/archives`);
-        setRecentMaps(response.data.data.slice(0, 3));
-        setIsServerOnline(true);
+        // Optimasi: Langsung minta ke server limit=3 saja, nggak usah narik semua data
+        const response = await axios.get(`${API_URL}/archives?skip=0&limit=3`, axiosConfig);
+        
+        if (response.data.status === "success") {
+          setRecentMaps(response.data.data);
+          setIsServerOnline(true);
+        }
       } catch (error) {
         console.error("Gagal memuat aktivitas:", error);
         setIsServerOnline(false);
