@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -21,7 +22,15 @@ app.add_middleware(
 )
 
 # ==============================================================
-# BUKA AKSES FOLDER STATIS (Biar bisa diakses via URL)
+# 📂 SAFETY NET: Bikin folder otomatis kalau belum ada di server
+# ==============================================================
+os.makedirs(PNG_DIR, exist_ok=True)
+os.makedirs(GEOJSON_DIR, exist_ok=True)
+os.makedirs(CSV_DIR, exist_ok=True)
+os.makedirs(TIF_DIR, exist_ok=True)
+
+# ==============================================================
+# 🌐 BUKA AKSES FOLDER STATIS (Biar bisa diakses via URL)
 # ==============================================================
 app.mount("/static/png", StaticFiles(directory=PNG_DIR), name="static_png")
 app.mount("/static/geojson", StaticFiles(directory=GEOJSON_DIR), name="static_geojson")

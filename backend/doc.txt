@@ -1,0 +1,145 @@
+Autentikasi (Keamanan)
+Beberapa endpoint bersifat rahasia (hanya untuk aplikasi Forecaster). Untuk mengakses endpoint yang dikunci (🔒), Anda WAJIB menyertakan header berikut pada setiap request:
+
+x-api-key: BMKG_KALTIM_RAHASIA
+
+🟢 1. API PUBLIK (Terbuka Tanpa Gembok)
+Endpoint ini bisa dipakai oleh website utama BMKG, aplikasi mobile, atau publik.
+
+1.1 Ambil Peta Terbaru (Untuk Web Utama)
+Mengambil data arsip paling terakhir yang di-generate oleh sistem.
+
+Method: GET
+
+Endpoint: /api/v1/maps/latest
+
+Parameter (Query):
+
+category (Opsional): Filter kategori peta (Contoh: hari_tanpa_hujan atau sebaran_hujan_harian).
+
+Response Sukses (200 OK):
+
+JSON
+{
+  "status": "success",
+  "data": {
+    "id": 12,
+    "title": "Peta Hari Tanpa Hujan",
+    "category": "hari_tanpa_hujan",
+    "period": "Oktober 2026",
+    "update_time": "8 Oktober 2026",
+    "analysis_text": "Berdasarkan pantauan HTH...",
+    "image_url": "http://151.242.../static/png/hari_tanpa_hujan_OKTOBER_12345.png",
+    "geojson_url": "http://151.242.../static/geojson/hari_tanpa_hujan_OKTOBER_12345.json"
+  }
+}
+1.2 Ambil Daftar Arsip (Pagination)
+Mengambil daftar riwayat peta untuk ditampilkan di tabel.
+
+Method: GET
+
+Endpoint: /archives
+
+Parameter (Query):
+
+skip (Opsional, Default: 0): Mulai dari data ke-berapa.
+
+limit (Opsional, Default: 20): Batas data per halaman.
+
+1.3 Unduh File Arsip Resmi
+Mengunduh file fisik dari server (PNG, GeoJSON, CSV, atau TIF).
+
+Method: GET
+
+Endpoint: /archives/download/{file_type}/{filename_base}
+
+Path Variables:
+
+file_type: Pilih salah satu (png, geojson, csv, tif)
+
+filename_base: Nama unik file (didapat dari endpoint arsip)
+
+1.4 Unduh Template CSV
+Method: GET
+
+Endpoint: /download-template
+
+Response: File template_bmkg.csv
+
+🔒 2. API OPERASIONAL (Khusus Forecaster)
+Wajib menyertakan header x-api-key pada request.
+
+2.1 Generate Peta & AI (Preview) 🔒
+Memproses data CSV menjadi peta spasial dan teks analisis AI tanpa menyimpan ke database.
+
+Method: POST
+
+Endpoint: /generate-map
+
+Content-Type: multipart/form-data
+
+Body / Form Data:
+
+file: File CSV (Required)
+
+category: Kategori peta (Required)
+
+period: Periode peta (Required)
+
+update_time: Tanggal update (Required)
+
+col_lon, col_lat, col_val: Nama kolom di CSV (Required)
+
+col_name: Nama kolom lokasi (Hanya wajib untuk HTH)
+
+sigma, power: Parameter IDW (Float)
+
+2.2 Regenerate Teks AI Saja 🔒
+Mengulang generate teks analisis AI dengan tambahan instruksi (Custom Prompt) tanpa menghitung ulang koordinat.
+
+Method: POST
+
+Endpoint: /regenerate-analysis
+
+Content-Type: multipart/form-data
+
+Body / Form Data: Sama dengan /generate-map, ditambah:
+
+custom_prompt: String instruksi khusus untuk AI.
+
+2.3 Simpan Peta ke Arsip Database 🔒
+Menyimpan hasil generate ke dalam file fisik, tabel PostgreSQL MapMetadata, dan memasukkan koordinat area spasial ke tabel PostGIS MapFeature.
+
+Method: POST
+
+Endpoint: /save-archive
+
+Content-Type: multipart/form-data
+
+Body / Form Data: Sama dengan /generate-map, ditambah:
+
+analysis_text: Teks analisis AI final yang sudah disetujui/diedit user.
+
+2.4 Update Teks Analisis Arsip 🔒
+Memperbarui teks narasi AI dari peta yang sudah tersimpan di database.
+
+Method: PUT
+
+Endpoint: /archives/{item_id}/analysis
+
+Content-Type: application/json
+
+Body JSON:
+
+JSON
+{
+  "analysis_text": "Teks analisis cuaca hasil revisi forecaster..."
+}
+2.5 Hapus Arsip Permanen 🔒
+Menghapus data di PostgreSQL (termasuk Cascade PostGIS) serta menghapus 4 file fisiknya dari Ubuntu (PNG, JSON, CSV, TIF).
+
+Method: DELETE
+
+Endpoint: /archives/{item_id}
+
+Response: {"status": "success"}
