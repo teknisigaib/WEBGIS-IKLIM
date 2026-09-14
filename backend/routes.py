@@ -389,7 +389,7 @@ async def update_archive_analysis(
 # ==============================================================================
 # 🌐 ENDPOINT KHUSUS UNTUK WEB UTAMA (PUBLIC API) - TERBUKA TANPA GEMBOK
 # ==============================================================================
-@router.get("/api/v1/maps/latest")
+@router.get("/v1/maps/latest")
 async def get_latest_map(
     category: str = Query(None, description="Filter kategori peta, misal: hari_tanpa_hujan"),
     db: Session = Depends(get_db)
@@ -418,5 +418,32 @@ async def get_latest_map(
             "analysis_text": latest_map.analysis_text or "",
             "image_url": f"{base_url}/static/png/{latest_map.png_url}" if latest_map.png_url else None,
             "geojson_url": f"{base_url}/static/geojson/{latest_map.geojson_url}" if latest_map.geojson_url else None
+        }
+    }
+
+@router.get("/v1/maps/search")
+def search_specific_map(category: str, period: str, db: Session = Depends(get_db)):
+    map_data = db.query(MapMetadata).filter(
+        MapMetadata.category == category,
+        MapMetadata.period.ilike(f"%{period}%")
+    ).order_by(MapMetadata.id.desc()).first()
+    
+    if not map_data:
+        raise HTTPException(status_code=404, detail=f"Data untuk {period} tidak ditemukan.")
+        
+    # 🔒 Paksa HTTPS
+    base_url = "https://webgis.bmkgaptpranoto.com"
+    
+    return {
+        "status": "success",
+        "data": {
+            "id": map_data.id,
+            "title": map_data.title,
+            "category": map_data.category,
+            "period": map_data.period,
+            "update_time": map_data.update_time,
+            "analysis_text": map_data.analysis_text or "",
+            "image_url": f"{base_url}/static/png/{map_data.png_url}" if map_data.png_url else None,
+            "geojson_url": f"{base_url}/static/geojson/{map_data.geojson_url}" if map_data.geojson_url else None
         }
     }
