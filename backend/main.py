@@ -15,10 +15,11 @@ app = FastAPI(title="WebGIS BMKG Kaltim API")
 # Setting CORS biar Frontend React bisa ngobrol sama Backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Izinkan dari semua domain (termasuk web utama BMKG)
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # GET, POST, OPTIONS, PUT, DELETE
+    allow_headers=["*"],  # Content-Type, x-api-key, Authorization, dll.
+    expose_headers=["*"]
 )
 
 # ==============================================================
