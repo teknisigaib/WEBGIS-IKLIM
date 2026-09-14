@@ -143,3 +143,49 @@ Method: DELETE
 Endpoint: /archives/{item_id}
 
 Response: {"status": "success"}
+
+
+
+# 📚 Dokumentasi API WebGIS BMKG Kaltim
+
+## 🛡️ Autentikasi (Keamanan)
+Beberapa endpoint bersifat rahasia (hanya untuk aplikasi Forecaster). Untuk mengakses endpoint yang dikunci (🔒), Anda **WAJIB** menyertakan header berikut pada setiap *request*:
+
+| Header | Value | Deskripsi |
+| :--- | :--- | :--- |
+| `x-api-key` | `Administrator96607` | *Secret key* untuk validasi admin/forecaster |
+
+*(Catatan: Value API Key disesuaikan dengan variabel `SECRET_KEY` di dalam `routes.py`)*.
+
+---
+
+## 🟢 1. API PUBLIK (Terbuka Tanpa Gembok)
+Endpoint ini bersifat publik dan dapat dikonsumsi oleh website utama BMKG, aplikasi mobile, maupun *client* eksternal lainnya.
+
+### 1.1 Ambil Peta Terbaru
+Mengambil data arsip spasial paling terakhir yang di-generate oleh sistem.
+
+* **Method:** `GET`
+* **Endpoint:** `/v1/maps/latest`
+
+**Parameter (Query):**
+| Parameter | Tipe | Wajib | Deskripsi |
+| :--- | :--- | :---: | :--- |
+| `category` | String | ❌ | Filter kategori peta (Contoh: `hari_tanpa_hujan` atau `sebaran_hujan_harian`). |
+
+**Response Sukses (200 OK):**
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 12,
+    "title": "Peta Hari Tanpa Hujan",
+    "category": "hari_tanpa_hujan",
+    "period": "Oktober 2026",
+    "update_time": "8 Oktober 2026",
+    "analysis_text": "Berdasarkan pantauan HTH...",
+    "image_url": "[https://webgis.bmkgaptpranoto.com/static/png/hari_tanpa_hujan_OKTOBER_12345.png](https://webgis.bmkgaptpranoto.com/static/png/hari_tanpa_hujan_OKTOBER_12345.png)",
+    "geojson_url": "[https://webgis.bmkgaptpranoto.com/static/geojson/hari_tanpa_hujan_OKTOBER_12345.json](https://webgis.bmkgaptpranoto.com/static/geojson/hari_tanpa_hujan_OKTOBER_12345.json)"
+  }
+}
+

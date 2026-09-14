@@ -66,7 +66,22 @@ async def generate_map(
         if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
             
         df = df.rename(columns=rename_mapping)
-        df_valid = df.dropna(subset=['LON', 'LAT']).fillna(0)
+        
+        # =========================================================
+        # 🧹 PEMBERSIHAN BRUTAL "BARIS HANTU" EXCEL
+        # =========================================================
+        # 1. Babat baris yang secara harfiah kosong melompong di semua kolom
+        df = df.dropna(how='all')
+        
+        # 2. Paksa konversi ke angka. Jika ada teks/spasi, otomatis diubah jadi NaN
+        df['LON'] = pd.to_numeric(df['LON'], errors='coerce')
+        df['LAT'] = pd.to_numeric(df['LAT'], errors='coerce')
+        df['VAL'] = pd.to_numeric(df['VAL'], errors='coerce')
+        
+        # 3. Buang semua baris yang LON, LAT, atau VAL-nya mengandung NaN (wajib ada datanya)
+        # Setelah itu baru isi sisa kolom kosong (misal NAMA_LOKASI) dengan string kosong ""
+        df_valid = df.dropna(subset=['LON', 'LAT', 'VAL']).fillna("")
+        # =========================================================
         
         kolom_wajib = ['LON', 'LAT', 'VAL']
         if col_name: kolom_wajib.append('NAMA_LOKASI')
@@ -101,7 +116,8 @@ async def generate_map(
                 "period": period,
                 "update_time": update_time,
                 "creator": creator,
-                "ai_analysis": ai_text
+                "ai_analysis": ai_text,
+                "legend_config": map_config  # <--- FIXED: Legenda ditambahkan
             }
         }
         
@@ -215,7 +231,8 @@ async def save_archive(
             "metadata": {
                 "map_type": MAP_CONFIGS[category]["title"],
                 "period": period, "update_time": update_time,
-                "creator": creator, "ai_analysis": analysis_text
+                "creator": creator, "ai_analysis": analysis_text,
+                "legend_config": MAP_CONFIGS[category]  # <--- FIXED: Legenda ditambahkan
             }
         }
         
