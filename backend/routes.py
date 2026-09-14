@@ -51,7 +51,7 @@ async def generate_map(
     col_lat: str = Form("LAT"), 
     col_val: str = Form("VAL"), 
     col_name: str = Form(None),
-    lock: None = Depends(verify_forecaster) # <--- GEMBOK DIPASANG
+    lock: None = Depends(verify_forecaster)
 ):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     map_config = MAP_CONFIGS[category]
@@ -60,28 +60,20 @@ async def generate_map(
     
     if category == "hari_tanpa_hujan":
         file.file.seek(0)
-        df = pd.read_csv(file.file)
+        # 1. BACA CSV (low_memory=False hilangkan DtypeWarning)
+        df = pd.read_csv(file.file, low_memory=False)
         
+        # 2. RENAME KOLOM SESUAI PILIHAN USER DI FRONTEND
         rename_mapping = { col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL' }
         if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
-            
         df = df.rename(columns=rename_mapping)
         
-        # =========================================================
-        # 🧹 PEMBERSIHAN BRUTAL "BARIS HANTU" EXCEL
-        # =========================================================
-        # 1. Babat baris yang secara harfiah kosong melompong di semua kolom
+        # 3. PEMBERSIHAN BRUTAL "BARIS HANTU" EXCEL
         df = df.dropna(how='all')
-        
-        # 2. Paksa konversi ke angka. Jika ada teks/spasi, otomatis diubah jadi NaN
         df['LON'] = pd.to_numeric(df['LON'], errors='coerce')
         df['LAT'] = pd.to_numeric(df['LAT'], errors='coerce')
         df['VAL'] = pd.to_numeric(df['VAL'], errors='coerce')
-        
-        # 3. Buang semua baris yang LON, LAT, atau VAL-nya mengandung NaN (wajib ada datanya)
-        # Setelah itu baru isi sisa kolom kosong (misal NAMA_LOKASI) dengan string kosong ""
         df_valid = df.dropna(subset=['LON', 'LAT', 'VAL']).fillna("")
-        # =========================================================
         
         kolom_wajib = ['LON', 'LAT', 'VAL']
         if col_name: kolom_wajib.append('NAMA_LOKASI')
@@ -117,7 +109,7 @@ async def generate_map(
                 "update_time": update_time,
                 "creator": creator,
                 "ai_analysis": ai_text,
-                "legend_config": map_config  # <--- FIXED: Legenda ditambahkan
+                "legend_config": map_config
             }
         }
         
@@ -144,7 +136,7 @@ async def regenerate_analysis(
     file: UploadFile = File(...), sigma: float = Form(2.0), power: float = Form(2.0), 
     category: str = Form(...), period: str = Form(...), update_time: str = Form(...), 
     col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL"), custom_prompt: str = Form(""),
-    lock: None = Depends(verify_forecaster) # <--- GEMBOK DIPASANG
+    lock: None = Depends(verify_forecaster)
 ):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     map_config = MAP_CONFIGS[category]
@@ -161,17 +153,24 @@ async def preview_print(
     category: str = Form(...), period: str = Form(...), update_time: str = Form(...), 
     creator: str = Form("TIM FORECASTER"), col_lon: str = Form("LON"), 
     col_lat: str = Form("LAT"), col_val: str = Form("VAL"), col_name: str = Form(None),
-    lock: None = Depends(verify_forecaster) # <--- GEMBOK DIPASANG
+    lock: None = Depends(verify_forecaster)
 ):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     
     file_bytes = await file.read()
     
     if category == "hari_tanpa_hujan":
-        df_valid = pd.read_csv(io.BytesIO(file_bytes))
+        df = pd.read_csv(io.BytesIO(file_bytes), low_memory=False)
         rename_mapping = {col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL'}
         if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
-        df_valid = df_valid.rename(columns=rename_mapping)
+        df = df.rename(columns=rename_mapping)
+        
+        # Pembersihan Brutal
+        df = df.dropna(how='all')
+        df['LON'] = pd.to_numeric(df['LON'], errors='coerce')
+        df['LAT'] = pd.to_numeric(df['LAT'], errors='coerce')
+        df['VAL'] = pd.to_numeric(df['VAL'], errors='coerce')
+        df_valid = df.dropna(subset=['LON', 'LAT', 'VAL']).fillna("")
         
         buf = draw_print_layout(None, None, None, MAP_CONFIGS[category], period, update_time, creator, df_points=df_valid)
     else:
@@ -193,7 +192,7 @@ async def save_archive(
     col_lon: str = Form("LON"), col_lat: str = Form("LAT"), col_val: str = Form("VAL"), 
     col_name: str = Form(None),
     db: Session = Depends(get_db),
-    lock: None = Depends(verify_forecaster) # <--- GEMBOK DIPASANG
+    lock: None = Depends(verify_forecaster)
 ):
     content = await file.read()
     filename_base = f"{category}_{period.replace(' ', '_').upper()}_{int(time.time())}" 
@@ -202,14 +201,21 @@ async def save_archive(
     with open(os.path.join(CSV_DIR, f"{filename_base}.csv"), "wb") as f_csv: f_csv.write(content)
     
     if category == "hari_tanpa_hujan":
-        df_valid = pd.read_csv(io.BytesIO(content))
+        df = pd.read_csv(io.BytesIO(content), low_memory=False)
         rename_mapping = {col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL'}
         if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
-        df_valid = df_valid.rename(columns=rename_mapping)
+        df = df.rename(columns=rename_mapping)
         
-        # Simpan PNG
+        # Pembersihan Brutal
+        df = df.dropna(how='all')
+        df['LON'] = pd.to_numeric(df['LON'], errors='coerce')
+        df['LAT'] = pd.to_numeric(df['LAT'], errors='coerce')
+        df['VAL'] = pd.to_numeric(df['VAL'], errors='coerce')
+        df_valid = df.dropna(subset=['LON', 'LAT', 'VAL']).fillna("")
+        
+        # Simpan PNG (menggunakan buf.getvalue())
         buf = draw_print_layout(None, None, None, MAP_CONFIGS[category], period, update_time, creator, df_points=df_valid)
-        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
+        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.getvalue())
         
         features = []
         for _, row in df_valid.iterrows():
@@ -232,16 +238,16 @@ async def save_archive(
                 "map_type": MAP_CONFIGS[category]["title"],
                 "period": period, "update_time": update_time,
                 "creator": creator, "ai_analysis": analysis_text,
-                "legend_config": MAP_CONFIGS[category]  # <--- FIXED: Legenda ditambahkan
+                "legend_config": MAP_CONFIGS[category]
             }
         }
         
     else:
         grid_x, grid_y, grid_z, _ = get_or_calculate_idw(content, sigma, power, col_lon, col_lat, col_val)
         
-        # Simpan PNG & TIF
+        # Simpan PNG & TIF (menggunakan buf.getvalue())
         buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
-        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
+        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.getvalue())
 
         tif_path = os.path.join(TIF_DIR, f"{filename_base}.tif")
         save_to_tiff(grid_x, grid_y, grid_z, tif_path)
@@ -265,28 +271,25 @@ async def save_archive(
         period=period,
         update_time=update_time,
         analysis_text=analysis_text,
-        # Kita pakai URL ini sekaligus buat nyimpan filename_base
         png_url=f"{filename_base}.png",
         geojson_url=f"{filename_base}.json",
         tif_url=f"{filename_base}.tif" if category != "hari_tanpa_hujan" else None
     )
     db.add(new_map)
-    db.commit()      # Simpan untuk dapetin 'new_map.id'
+    db.commit()
     db.refresh(new_map)
 
     # -------------------------------------------------------------------------
-    # 3. INSERT KE POSTGIS (Tabel Anak: MapFeature) - BEDAH GEOJSON!
+    # 3. INSERT KE POSTGIS (Tabel Anak: MapFeature)
     # -------------------------------------------------------------------------
     features_to_insert = []
     for feat in clean_geojson['features']:
         geom_json = json.dumps(feat['geometry'])
         
-        # Cek properti val/label (HTH beda sama IDW)
         props = feat.get('properties', {})
         val = props.get('val', None)
         label = props.get('nama') if category == "hari_tanpa_hujan" else props.get('title', '')
         
-        # Query Sakti PostGIS: Mengubah teks GeoJSON murni menjadi tipe data GEOMETRY Spatial
         geom_postgis = func.ST_SetSRID(func.ST_GeomFromGeoJSON(geom_json), 4326)
         
         db_feat = MapFeature(
@@ -299,7 +302,7 @@ async def save_archive(
         
     if features_to_insert:
         db.add_all(features_to_insert)
-        db.commit() # Simpan semua koordinat spasial sekaligus
+        db.commit()
 
     return {"status": "success", "filename": f"{filename_base}.png"}
 
@@ -313,10 +316,7 @@ async def get_archives(
     limit: int = Query(20, description="Batas jumlah data yang diambil per halaman"),
     db: Session = Depends(get_db)
 ):
-    # Hitung total data yang ada
     total_data = db.query(MapMetadata).count()
-    
-    # Ambil data pakai offset(skip) dan limit
     maps = db.query(MapMetadata).order_by(MapMetadata.id.desc()).offset(skip).limit(limit).all()
     
     result = []
@@ -350,7 +350,7 @@ async def get_archives(
 async def delete_archive(
     item_id: int, 
     db: Session = Depends(get_db),
-    lock: None = Depends(verify_forecaster) # <--- GEMBOK DIPASANG
+    lock: None = Depends(verify_forecaster)
 ):
     record = db.query(MapMetadata).filter(MapMetadata.id == item_id).first()
     if not record: 
@@ -358,7 +358,6 @@ async def delete_archive(
         
     filename_base = record.png_url.replace('.png', '')
     
-    # Hapus file fisik
     for path in [
         os.path.join(PNG_DIR, f"{filename_base}.png"), 
         os.path.join(GEOJSON_DIR, f"{filename_base}.json"), 
@@ -367,7 +366,6 @@ async def delete_archive(
     ]:
         if os.path.exists(path): os.remove(path)
             
-    # Hapus dari PostgreSQL (Otomatis menghapus data MapFeature karena fitur Cascade On Delete)
     db.delete(record)
     db.commit()
     return {"status": "success"}
@@ -390,7 +388,7 @@ async def update_archive_analysis(
     item_id: int, 
     data: UpdateAnalysisModel, 
     db: Session = Depends(get_db),
-    lock: None = Depends(verify_forecaster) # <--- GEMBOK DIPASANG
+    lock: None = Depends(verify_forecaster)
 ):
     record = db.query(MapMetadata).filter(MapMetadata.id == item_id).first()
     if not record:
@@ -404,7 +402,7 @@ async def update_archive_analysis(
 
 
 # ==============================================================================
-# 🌐 ENDPOINT KHUSUS UNTUK WEB UTAMA (PUBLIC API) - TERBUKA TANPA GEMBOK
+# 🌐 ENDPOINT KHUSUS UNTUK WEB UTAMA (PUBLIC API)
 # ==============================================================================
 @router.get("/v1/maps/latest")
 async def get_latest_map(
@@ -421,7 +419,6 @@ async def get_latest_map(
     if not latest_map:
         raise HTTPException(status_code=404, detail="Data peta belum tersedia di server.")
         
-    # 🔒 URL statis HTTPS biar bebas dari blokir Mixed Content
     base_url = "https://webgis.bmkgaptpranoto.com"
     
     return {
@@ -448,7 +445,6 @@ def search_specific_map(category: str, period: str, db: Session = Depends(get_db
     if not map_data:
         raise HTTPException(status_code=404, detail=f"Data untuk {period} tidak ditemukan.")
         
-    # 🔒 Paksa HTTPS
     base_url = "https://webgis.bmkgaptpranoto.com"
     
     return {
