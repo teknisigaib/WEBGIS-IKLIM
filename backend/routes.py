@@ -66,7 +66,8 @@ async def generate_map(
         if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
             
         df = df.rename(columns=rename_mapping)
-        df_valid = df.fillna(0)
+        # Buang baris yang koordinatnya kosong, baru ubah sisa NaN (misal val kosong) jadi 0
+        df_valid = df.dropna(subset=['LON', 'LAT']).fillna(0)
         
         kolom_wajib = ['LON', 'LAT', 'VAL']
         if col_name: kolom_wajib.append('NAMA_LOKASI')
