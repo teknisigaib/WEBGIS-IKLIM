@@ -389,35 +389,26 @@ async def update_archive_analysis(
 # ==============================================================================
 # 🌐 ENDPOINT KHUSUS UNTUK WEB UTAMA (PUBLIC API) - TERBUKA TANPA GEMBOK
 # ==============================================================================
+
 @router.get("/api/v1/maps/latest")
 async def get_latest_map(
     request: Request,
     category: str = Query(None, description="Filter kategori peta, misal: hari_tanpa_hujan"),
     db: Session = Depends(get_db)
 ):
-    """
-    Endpoint ini dipakai oleh website utama BMKG untuk mengambil data peta paling baru.
-    Bisa difilter berdasarkan kategori (opsional).
-    """
-    # 1. Bikin query dasar
     query = db.query(MapMetadata)
     
-    # 2. Kalau web utama minta kategori spesifik, kita filter
     if category:
         query = query.filter(MapMetadata.category == category)
         
-    # 3. Ambil 1 data yang paling terakhir disave (ORDER BY id DESC LIMIT 1)
     latest_map = query.order_by(MapMetadata.id.desc()).first()
     
-    # 4. Kalau datanya kosong / belum ada arsip
     if not latest_map:
         raise HTTPException(status_code=404, detail="Data peta belum tersedia di server.")
         
-    # 5. Dapatkan URL dasar (Base URL) dari server otomatis (contoh: http://localhost:8000)
-    # Biar Frontend React nggak usah pusing nyari letak IP servernya
-    base_url = str(request.base_url).rstrip("/")
+    # 🔒 PAKSA PAKE HTTPS BIAR GAK KENA MIXED CONTENT DI FRONTEND!
+    base_url = "https://webgis.bmkgaptpranoto.com"
     
-    # 6. Susun response yang cantik dan bersih buat web utama
     return {
         "status": "success",
         "data": {
@@ -429,5 +420,36 @@ async def get_latest_map(
             "analysis_text": latest_map.analysis_text or "",
             "image_url": f"{base_url}/static/png/{latest_map.png_url}" if latest_map.png_url else None,
             "geojson_url": f"{base_url}/static/geojson/{latest_map.geojson_url}" if latest_map.geojson_url else None
+        }
+    }
+
+
+@router.get("/api/v1/maps/search")
+def search_specific_map(category: str, period: str, db: Session = Depends(get_db)):
+    """
+    Endpoint untuk mencari peta berdasarkan kategori dan teks periodenya (Case Insensitive).
+    """
+    map_data = db.query(MapMetadata).filter(
+        MapMetadata.category == category,
+        MapMetadata.period.ilike(f"%{period}%")
+    ).order_by(MapMetadata.id.desc()).first()
+    
+    if not map_data:
+        return {"status": "error", "message": f"Data untuk {period} tidak ditemukan."}
+        
+    # 🔒 PAKSA PAKE HTTPS
+    base_url = "https://webgis.bmkgaptpranoto.com"
+    
+    return {
+        "status": "success",
+        "data": {
+            "id": map_data.id,
+            "title": map_data.title,
+            "category": map_data.category,
+            "period": map_data.period,
+            "update_time": map_data.update_time,
+            "analysis_text": map_data.analysis_text or "",
+            "image_url": f"{base_url}/static/png/{map_data.png_url}" if map_data.png_url else None,
+            "geojson_url": f"{base_url}/static/geojson/{map_data.geojson_url}" if map_data.geojson_url else None
         }
     }
