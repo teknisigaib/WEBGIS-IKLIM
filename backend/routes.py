@@ -66,7 +66,6 @@ async def generate_map(
         if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
             
         df = df.rename(columns=rename_mapping)
-        # Buang baris yang koordinatnya kosong, baru ubah sisa NaN (misal val kosong) jadi 0
         df_valid = df.dropna(subset=['LON', 'LAT']).fillna(0)
         
         kolom_wajib = ['LON', 'LAT', 'VAL']
@@ -390,10 +389,8 @@ async def update_archive_analysis(
 # ==============================================================================
 # 🌐 ENDPOINT KHUSUS UNTUK WEB UTAMA (PUBLIC API) - TERBUKA TANPA GEMBOK
 # ==============================================================================
-
 @router.get("/api/v1/maps/latest")
 async def get_latest_map(
-    request: Request,
     category: str = Query(None, description="Filter kategori peta, misal: hari_tanpa_hujan"),
     db: Session = Depends(get_db)
 ):
@@ -407,7 +404,7 @@ async def get_latest_map(
     if not latest_map:
         raise HTTPException(status_code=404, detail="Data peta belum tersedia di server.")
         
-    # 🔒 PAKSA PAKE HTTPS BIAR GAK KENA MIXED CONTENT DI FRONTEND!
+    # 🔒 URL statis HTTPS biar bebas dari blokir Mixed Content
     base_url = "https://webgis.bmkgaptpranoto.com"
     
     return {
@@ -421,36 +418,5 @@ async def get_latest_map(
             "analysis_text": latest_map.analysis_text or "",
             "image_url": f"{base_url}/static/png/{latest_map.png_url}" if latest_map.png_url else None,
             "geojson_url": f"{base_url}/static/geojson/{latest_map.geojson_url}" if latest_map.geojson_url else None
-        }
-    }
-
-
-@router.get("/api/v1/maps/search")
-def search_specific_map(category: str, period: str, db: Session = Depends(get_db)):
-    """
-    Endpoint untuk mencari peta berdasarkan kategori dan teks periodenya (Case Insensitive).
-    """
-    map_data = db.query(MapMetadata).filter(
-        MapMetadata.category == category,
-        MapMetadata.period.ilike(f"%{period}%")
-    ).order_by(MapMetadata.id.desc()).first()
-    
-    if not map_data:
-        return {"status": "error", "message": f"Data untuk {period} tidak ditemukan."}
-        
-    # 🔒 PAKSA PAKE HTTPS
-    base_url = "https://webgis.bmkgaptpranoto.com"
-    
-    return {
-        "status": "success",
-        "data": {
-            "id": map_data.id,
-            "title": map_data.title,
-            "category": map_data.category,
-            "period": map_data.period,
-            "update_time": map_data.update_time,
-            "analysis_text": map_data.analysis_text or "",
-            "image_url": f"{base_url}/static/png/{map_data.png_url}" if map_data.png_url else None,
-            "geojson_url": f"{base_url}/static/geojson/{map_data.geojson_url}" if map_data.geojson_url else None
         }
     }
