@@ -52,7 +52,7 @@ async def validate_csv_file(file: UploadFile):
         raise HTTPException(status_code=400, detail="Format file ditolak. Sistem hanya menerima ekstensi .csv.")
     
     file_bytes = await file.read()
-    if len(file_bytes) > 5 * 1024 * 1024:
+    if len(file_bytes) > 20 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Kapasitas file melebihi batas maksimal yang diizinkan (5MB).")
     
     await file.seek(0)
