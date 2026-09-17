@@ -45,19 +45,21 @@ app.mount("/static/tif", StaticFiles(directory=TIF_DIR), name="static_tif")
 # 📚 ENDPOINT KHUSUS DOKUMENTASI PUBLIK (SWAGGER UI)
 # ==============================================================
 
-# 1. Rute untuk menyajikan file JSON mentahnya (dipanggil oleh Swagger UI)
+# Rute untuk menyajikan file JSON mentahnya
 @app.get("/public-openapi.json", include_in_schema=False)
 async def get_public_openapi():
     with open("openapi_bmkg_public.json", "r") as f:
         return JSONResponse(content=json.load(f))
 
-# 2. Rute untuk nampilin halaman interaktifnya di /documentation
+# Rute untuk menampilkan halaman Swagger UI
 @app.get("/documentation", include_in_schema=False)
 async def public_api_docs():
     return get_swagger_ui_html(
         openapi_url="/public-openapi.json",
         title="Dokumentasi API Publik BMKG Kaltim",
-        swagger_favicon_url="https://www.bmkg.go.id/asset/img/favicon.ico" # Opsional: Pake logo BMKG
+        swagger_favicon_url="https://www.bmkg.go.id/asset/img/favicon.ico",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"
     )
 
 # Sambungin semua endpoint dari routes.py ke aplikasi utama
