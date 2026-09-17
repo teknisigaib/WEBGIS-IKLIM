@@ -1,7 +1,10 @@
 import os
+import json
+from fastapi.responses import JSONResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html 
 import uvicorn
 
 # Import router dari file routes.py
@@ -37,6 +40,25 @@ app.mount("/static/png", StaticFiles(directory=PNG_DIR), name="static_png")
 app.mount("/static/geojson", StaticFiles(directory=GEOJSON_DIR), name="static_geojson")
 app.mount("/static/csv", StaticFiles(directory=CSV_DIR), name="static_csv")
 app.mount("/static/tif", StaticFiles(directory=TIF_DIR), name="static_tif")
+
+# ==============================================================
+# 📚 ENDPOINT KHUSUS DOKUMENTASI PUBLIK (SWAGGER UI)
+# ==============================================================
+
+# 1. Rute untuk menyajikan file JSON mentahnya (dipanggil oleh Swagger UI)
+@app.get("/public-openapi.json", include_in_schema=False)
+async def get_public_openapi():
+    with open("openapi_bmkg_public.json", "r") as f:
+        return JSONResponse(content=json.load(f))
+
+# 2. Rute untuk nampilin halaman interaktifnya di /documentation
+@app.get("/documentation", include_in_schema=False)
+async def public_api_docs():
+    return get_swagger_ui_html(
+        openapi_url="/public-openapi.json",
+        title="Dokumentasi API Publik BMKG Kaltim",
+        swagger_favicon_url="https://www.bmkg.go.id/asset/img/favicon.ico" # Opsional: Pake logo BMKG
+    )
 
 # Sambungin semua endpoint dari routes.py ke aplikasi utama
 app.include_router(router)

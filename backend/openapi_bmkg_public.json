@@ -1,0 +1,201 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API Publik WebGIS BMKG Kaltim",
+    "description": "Dokumentasi OpenAPI untuk endpoint publik WebGIS Cuaca & Iklim BMKG Kaltim. Endpoint ini bersifat Read-Only dan dapat diakses tanpa autentikasi (tanpa API Key) oleh sistem eksternal.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Tim IT BMKG APT Pranoto Samarinda"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://webgis.bmkgaptpranoto.com",
+      "description": "Production Server"
+    }
+  ],
+  "paths": {
+    "/v1/maps/latest": {
+      "get": {
+        "tags": [
+          "Public Maps"
+        ],
+        "summary": "Mendapatkan Peta Terbaru",
+        "description": "Mengembalikan data arsip peta yang paling terakhir kali di-generate oleh sistem. Dapat difilter berdasarkan kategori peta tertentu.",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter kunci kategori peta (Contoh: `hari_tanpa_hujan`, `prakiraan_hujan_dasarian`)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil mendapatkan data peta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data peta belum tersedia",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/maps/search": {
+      "get": {
+        "tags": [
+          "Public Maps"
+        ],
+        "summary": "Pencarian Peta Spesifik",
+        "description": "Mencari arsip peta secara spesifik berdasarkan parameter waktu (Tahun, Bulan, Dasarian, atau Tanggal).",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Kunci kategori peta (Contoh: `sebaran_hujan_harian`)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "description": "Tahun rilis peta (Contoh: 2026)",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Angka bulan (1 untuk Januari - 12 untuk Desember)",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "dasarian",
+            "in": "query",
+            "description": "Angka dasarian (1, 2, atau 3). Kosongkan jika mencari peta periode bulanan.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "description": "Angka tanggal (1 - 31). Gunakan hanya untuk mencari peta periode harian.",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil menemukan data peta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data peta dengan kriteria tersebut tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MapResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 142
+              },
+              "title": {
+                "type": "string",
+                "example": "Peta Hari Tanpa Hujan"
+              },
+              "category": {
+                "type": "string",
+                "example": "hari_tanpa_hujan"
+              },
+              "period": {
+                "type": "string",
+                "example": "Dasarian I September 2026"
+              },
+              "update_time": {
+                "type": "string",
+                "format": "date",
+                "example": "2026-09-10"
+              },
+              "analysis_text": {
+                "type": "string",
+                "example": "Berdasarkan pantauan satelit dan pos hujan, sebagian besar wilayah Kalimantan Timur..."
+              },
+              "image_url": {
+                "type": "string",
+                "format": "uri",
+                "example": "https://webgis.bmkgaptpranoto.com/static/png/hari_tanpa_hujan.png"
+              },
+              "geojson_url": {
+                "type": "string",
+                "format": "uri",
+                "example": "https://webgis.bmkgaptpranoto.com/static/geojson/hari_tanpa_hujan.json"
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "example": "Data peta belum tersedia di server."
+          }
+        }
+      }
+    }
+  }
+}
