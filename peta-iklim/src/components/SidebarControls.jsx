@@ -16,7 +16,8 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
   const [selDay, setSelDay] = useState(new Date().getDate());
 
   const isHarianMode = category.includes('harian'); 
-  const isDasarianMode = category.includes('dasarian');
+  // 👇 INI YANG DIUBAH CUY! Sekarang HTH masuk kategori Dasarian
+  const isDasarianMode = category.includes('dasarian') || category === 'hari_tanpa_hujan';
   const isHTHMode = category === 'hari_tanpa_hujan';
 
   const [selDasarian, setSelDasarian] = useState("I");
@@ -115,7 +116,7 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
             </label>
           </div>
 
-          {/* DYNAMIC COLUMN MAPPING - WRAP MODE (MUDAH DI-KLIK) */}
+          {/* DYNAMIC COLUMN MAPPING - WRAP MODE */}
           {csvHeaders.length > 0 && (
             <div className="mt-3 p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl animate-fade-in-up">
               <h4 className="text-[11px] font-bold text-indigo-900 mb-1 flex items-center gap-1">
@@ -131,7 +132,6 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
                     <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider pl-1">
                       Kolom {type === 'lon' ? 'Bujur (X)' : type === 'lat' ? 'Lintang (Y)' : 'Nilai (Z)'} <span className="text-red-500">*</span>
                     </div>
-                    {/* Menggunakan flex-wrap agar baris turun otomatis jika kepanjangan */}
                     <div className="w-full flex flex-wrap gap-1.5">
                       {csvHeaders.map((h, i) => (
                         <button

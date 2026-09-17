@@ -11,8 +11,8 @@ import Home from './components/Home';
 
 export const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Gembok rahasia yang sama dengan di routes.py backend
-const API_KEY = "Administrator96607"; 
+// Konfigurasi kunci otentikasi API yang merujuk pada Environment Variables
+const API_KEY = import.meta.env.VITE_API_KEY; 
 
 export default function App() {
   const [mapData, setMapData] = useState(null);
@@ -24,7 +24,7 @@ export default function App() {
   const [exportData, setExportData] = useState({ url: '', filename: '' });
   const [pendingFormData, setPendingFormData] = useState(null);
   
-  // STATE BARU: Simpan Form Data Terakhir & Custom Prompt
+  // State penampung parameter terakhir untuk instruksi kustom AI
   const [lastMapParams, setLastMapParams] = useState(null);
   const [customPrompt, setCustomPrompt] = useState("");
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -33,7 +33,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  // === FITUR RESIZE (GESER TINGGI PETA & AI) ===
+  // Fitur penyesuaian dimensi antarmuka peta dan teks analitik
   const [mapHeight, setMapHeight] = useState(60); 
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
@@ -74,13 +74,13 @@ export default function App() {
   const handleGenerateMap = async (formData) => {
     setIsLoading(true);
     setAnalysisText(""); 
-    setLastMapParams(formData); // Simpan input user buat dipakai saat Regenerate AI
+    setLastMapParams(formData); // Menyimpan parameter pengguna untuk proses pembaruan teks analitik
     
     try {
       const data = new FormData();
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
       
-      // ⚠️ Gembok dipasang di sini!
+      // Menyematkan kredensial keamanan pada header HTTP
       const response = await axios.post(`${API_URL}/generate-map`, data, { 
         headers: { 
           'Content-Type': 'multipart/form-data',
@@ -99,16 +99,16 @@ export default function App() {
     } finally { setIsLoading(false); }
   };
 
-  // FUNGSI BARU: Regenerate Text AI Saja (Tanpa ngulang hitung peta)
+  // Fungsi pembaruan teks analitik AI secara independen
   const handleRegenerateAI = async () => {
     if (!lastMapParams) return;
     setIsRegenerating(true);
     try {
       const data = new FormData();
       Object.keys(lastMapParams).forEach(key => data.append(key, lastMapParams[key]));
-      data.append("custom_prompt", customPrompt); // Suntik instruksi tambahan
+      data.append("custom_prompt", customPrompt); // Menyisipkan instruksi kustom pengguna
 
-      // ⚠️ Gembok dipasang di sini!
+      // Menyematkan kredensial keamanan pada header HTTP
       const response = await axios.post(`${API_URL}/regenerate-analysis`, data, { 
         headers: { 
           'Content-Type': 'multipart/form-data',
@@ -117,9 +117,9 @@ export default function App() {
       });
       
       setAnalysisText(response.data.data.analysis_text);
-      showToast("Teks AI berhasil diperbarui sesuai instruksi!", "success");
+      showToast("Teks analitik berhasil diperbarui sesuai instruksi kustom.", "success");
     } catch (error) {
-      showToast("Gagal memperbarui analisis AI.", "error");
+      showToast("Gagal memproses pembaruan analisis AI.", "error");
     } finally {
       setIsRegenerating(false);
     }
@@ -131,7 +131,7 @@ export default function App() {
       const data = new FormData();
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
       
-      // ⚠️ Gembok dipasang di sini!
+      // Menyematkan kredensial keamanan pada header HTTP
       const response = await axios.post(`${API_URL}/preview-print`, data, { 
         headers: { 
           'Content-Type': 'multipart/form-data',
@@ -151,7 +151,7 @@ export default function App() {
       
       setShowModal(true);
     } catch (error) {
-      showToast('Gagal memuat preview gambar cetak.', 'error');
+      showToast('Gagal memuat pratinjau dokumen visual.', 'error');
     } finally { setIsLoading(false); }
   };
 
@@ -163,7 +163,7 @@ export default function App() {
       Object.keys(pendingFormData).forEach(key => data.append(key, pendingFormData[key]));
       data.append("analysis_text", analysisText); 
 
-      // ⚠️ Gembok dipasang di sini!
+      // Menyematkan kredensial keamanan pada header HTTP
       const response = await axios.post(`${API_URL}/save-archive`, data, { 
         headers: { 
           'Content-Type': 'multipart/form-data',
@@ -182,7 +182,7 @@ export default function App() {
       
       setShowModal(false); 
       setPendingFormData(null);
-      showToast('Berhasil! Peta & Analisis tersimpan di arsip.', 'success');
+      showToast('Data pemetaan dan analitik berhasil diarsipkan.', 'success');
       
       setResetKey(prev => prev + 1); 
       setMapData(null); 
@@ -190,7 +190,7 @@ export default function App() {
       setCustomPrompt(""); 
 
     } catch (error) {
-      showToast('Gagal menyimpan peta ke Arsip.', 'error');
+      showToast('Proses penyimpanan arsip gagal diinisialisasi.', 'error');
     } finally { setIsSaving(false); }
   };
 
@@ -198,7 +198,7 @@ export default function App() {
     navigator.clipboard.writeText(analysisText);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
-    showToast('Teks analisis disalin ke clipboard!', 'success');
+    showToast('Teks analitik berhasil disalin ke papan klip.', 'success');
   };
 
   const downloadTxt = () => {
@@ -237,7 +237,7 @@ export default function App() {
                   <div 
                     onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
                     className={`h-3 w-full bg-slate-100 hover:bg-blue-200 border-y border-slate-200 flex items-center justify-center cursor-row-resize z-30 transition-colors shadow-sm ${isDragging ? 'bg-blue-300' : ''}`}
-                    title="Tarik naik/turun"
+                    title="Sesuaikan Dimensi Panel"
                   >
                     <GripHorizontal size={16} className={`text-slate-400 ${isDragging ? 'text-blue-700' : ''}`} />
                   </div>
@@ -254,13 +254,13 @@ export default function App() {
                           <Bot size={18} />
                         </div>
                         <h3 className="font-bold text-slate-800 text-sm">Draf Analisis Cuaca AI</h3>
-                        <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold ml-2 hidden sm:block">Editable</span>
+                        <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold ml-2 hidden sm:block">Dapat Disunting</span>
                       </div>
 
                       <div className="flex items-center gap-2">
                         <button onClick={copyToClipboard} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors shadow-sm">
                           {isCopied ? <Check size={14} className="text-emerald-500"/> : <Copy size={14} />}
-                          {isCopied ? 'Tersalin!' : 'Copy'}
+                          {isCopied ? 'Tersalin' : 'Salin'}
                         </button>
                         <button onClick={downloadTxt} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-lg transition-colors shadow-sm">
                           <Download size={14} /> .TXT
@@ -275,7 +275,7 @@ export default function App() {
                         <input 
                           type="text" 
                           className="w-full pl-8 pr-4 py-2 text-xs bg-white border border-blue-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 placeholder:text-slate-400 font-medium shadow-sm transition-all"
-                          placeholder="Beri instruksi khusus AI (Cth: Fokuskan narasi pada Kota Samarinda karena potensi banjir...)"
+                          placeholder="Masukkan parameter instruksi khusus (Cth: Fokuskan narasi pada anomali cuaca di wilayah utara...)"
                           value={customPrompt}
                           onChange={(e) => setCustomPrompt(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleRegenerateAI()}
@@ -287,7 +287,7 @@ export default function App() {
                         className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 disabled:grayscale text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                       >
                         {isRegenerating ? <RefreshCw size={14} className="animate-spin"/> : <Sparkles size={14}/>}
-                        Regenerate AI
+                        Perbarui Teks AI
                       </button>
                     </div>
 
@@ -295,7 +295,7 @@ export default function App() {
                       className="flex-1 w-full h-full bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-blue-400 transition-all resize-none shadow-sm custom-scrollbar"
                       value={analysisText}
                       onChange={(e) => setAnalysisText(e.target.value)}
-                      placeholder="Menunggu analisis AI..."
+                      placeholder="Sistem sedang menginisiasi generasi teks analitik..."
                     />
                   </div>
                 )}
@@ -308,8 +308,8 @@ export default function App() {
                       <div className="flex items-center gap-3">
                         <div className="bg-blue-100 text-blue-600 p-2 rounded-xl"><CheckCircle2 size={20}/></div>
                         <div>
-                          <h2 className="text-lg font-black text-slate-800 leading-none">Preview Layout Cetak</h2>
-                          <p className="text-xs text-slate-500 font-medium mt-1">Verifikasi hasil sebelum disimpan ke database</p>
+                          <h2 className="text-lg font-black text-slate-800 leading-none">Pratinjau Layout Dokumen</h2>
+                          <p className="text-xs text-slate-500 font-medium mt-1">Verifikasi integritas visual sebelum penyisipan basis data</p>
                         </div>
                       </div>
                       <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
@@ -318,22 +318,22 @@ export default function App() {
                     </div>
 
                     <div className="flex-1 overflow-auto bg-slate-200/50 p-6 flex justify-center items-center">
-                      <img src={exportData.url} alt="Preview Peta" className="max-h-[60vh] object-contain shadow-md border border-slate-200 rounded-sm bg-white" />
+                      <img src={exportData.url} alt="Pratinjau Peta" className="max-h-[60vh] object-contain shadow-md border border-slate-200 rounded-sm bg-white" />
                     </div>
 
                     <div className="px-6 py-5 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                       <div className="flex items-center gap-2 max-w-md w-full">
                         <FileText size={16} className="text-slate-400 shrink-0"/>
                         <p className="text-xs font-semibold text-slate-500 truncate" title={exportData.filename}>
-                          File: <span className="text-blue-600">{exportData.filename}</span>
+                          Target File: <span className="text-blue-600">{exportData.filename}</span>
                         </p>
                       </div>
                       <div className="flex gap-3 w-full md:w-auto">
                         <button onClick={() => setShowModal(false)} className="flex-1 md:flex-none px-6 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
-                          Batal
+                          Batalkan
                         </button>
                         <button onClick={handleSaveAndDownload} disabled={isSaving} className="flex-1 md:flex-none px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-500/30 disabled:opacity-70 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                          {isSaving ? <span className="flex items-center gap-2"><Bot size={16} className="animate-bounce"/> Menyimpan...</span> : <span className="flex items-center gap-2"><Save size={16}/> Simpan & Download</span>}
+                          {isSaving ? <span className="flex items-center gap-2"><Bot size={16} className="animate-bounce"/> Mengarsipkan...</span> : <span className="flex items-center gap-2"><Save size={16}/> Simpan & Unduh Resolusi Tinggi</span>}
                         </button>
                       </div>
                     </div>

@@ -11,6 +11,9 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from typing import Optional
+from datetime import date, datetime  
+import math
 
 # Import fungsi dan variabel dari file config, models, & map_engine
 from config import MAP_CONFIGS, CSV_DIR, PNG_DIR, GEOJSON_DIR, TIF_DIR, get_db
@@ -22,22 +25,45 @@ from ai_service import generate_ai_analysis
 router = APIRouter()
 
 # ==============================================================================
-# 🛡️ GEMBOK KEAMANAN (STATIC TOKEN)
+# KAMUS BULAN UNTUK MESIN PENCARI
+# ==============================================================================
+BULAN_ID = {
+    "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
+    "juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11, "desember": 12
+}
+
+# ==============================================================================
+# 🛡️ SISTEM KEAMANAN TERPADU
 # ==============================================================================
 def verify_forecaster(x_api_key: str = Header(None)):
     """
-    Fungsi sakti buat ngunci rute. Cuma aplikasi React lu yang tau password ini.
+    Fungsi otentikasi yang memverifikasi kunci akses API melalui Environment Variables.
     """
-    SECRET_KEY = "Administrator96607" # Lu bisa ganti sesuka hati
+    SECRET_KEY = os.getenv("API_SECRET_KEY", "Administrator96607") 
     if x_api_key != SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Akses Ditolak! Anda bukan Forecaster BMKG.")
+        raise HTTPException(status_code=403, detail="Akses Ditolak! Kredensial tidak valid.")
+
+async def validate_csv_file(file: UploadFile):
+    """
+    Fungsi helper untuk mencegah injeksi file berbahaya dan serangan Out of Memory (OOM).
+    Maksimal ukuran file: 5MB (5 * 1024 * 1024 bytes).
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Format file ditolak. Sistem hanya menerima ekstensi .csv.")
+    
+    file_bytes = await file.read()
+    if len(file_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Kapasitas file melebihi batas maksimal yang diizinkan (5MB).")
+    
+    await file.seek(0)
+    return file_bytes
+
 
 @router.get("/download-template")
 async def download_template():
     return Response("LON,LAT,VAL,NAMA_LOKASI\n117.15,-0.50,150,Pos Hujan Samarinda", media_type="text/csv", headers={"Content-Disposition": "attachment; filename=template_bmkg.csv"})
 
 
-# Tambahkan Depends(verify_forecaster) untuk mengunci rute ini
 @router.post("/generate-map")
 async def generate_map(
     file: UploadFile = File(...), 
@@ -56,10 +82,9 @@ async def generate_map(
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     map_config = MAP_CONFIGS[category]
     
-    file_bytes = await file.read() 
+    file_bytes = await validate_csv_file(file)
     
     if category == "hari_tanpa_hujan":
-        file.file.seek(0)
         # 1. BACA CSV (low_memory=False hilangkan DtypeWarning)
         df = pd.read_csv(file.file, low_memory=False)
         
@@ -141,7 +166,8 @@ async def regenerate_analysis(
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     map_config = MAP_CONFIGS[category]
     
-    grid_x, grid_y, grid_z, _ = get_or_calculate_idw(await file.read(), sigma, power, col_lon, col_lat, col_val)
+    file_bytes = await validate_csv_file(file)
+    grid_x, grid_y, grid_z, _ = get_or_calculate_idw(file_bytes, sigma, power, col_lon, col_lat, col_val)
     ai_text = generate_ai_analysis(grid_x, grid_y, grid_z, map_config['title'], period, update_time, map_config, custom_prompt)
     
     return {"status": "success", "data": {"analysis_text": ai_text}}
@@ -157,7 +183,7 @@ async def preview_print(
 ):
     if category not in MAP_CONFIGS: raise HTTPException(400, "Invalid Category")
     
-    file_bytes = await file.read()
+    file_bytes = await validate_csv_file(file)
     
     if category == "hari_tanpa_hujan":
         df = pd.read_csv(io.BytesIO(file_bytes), low_memory=False)
@@ -181,7 +207,7 @@ async def preview_print(
 
 
 # ==============================================================================
-# 🚀 MIGRASI PENUH KE POSTGRESQL + POSTGIS MENGGUNAKAN ORM 
+# 🚀 ROUTE ARSIP & DATABASE (DILENGKAPI ENTERPRISE LOGIC)
 # ==============================================================================
 
 @router.post("/save-archive")
@@ -194,117 +220,147 @@ async def save_archive(
     db: Session = Depends(get_db),
     lock: None = Depends(verify_forecaster)
 ):
-    content = await file.read()
-    filename_base = f"{category}_{period.replace(' ', '_').upper()}_{int(time.time())}" 
-    
-    # 1. Simpan CSV Mentah
-    with open(os.path.join(CSV_DIR, f"{filename_base}.csv"), "wb") as f_csv: f_csv.write(content)
-    
-    if category == "hari_tanpa_hujan":
-        df = pd.read_csv(io.BytesIO(content), low_memory=False)
-        rename_mapping = {col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL'}
-        if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
-        df = df.rename(columns=rename_mapping)
+    try:
+        content = await validate_csv_file(file)
+        filename_base = f"{category}_{period.replace(' ', '_').upper()}_{int(time.time())}" 
         
-        # Pembersihan Brutal
-        df = df.dropna(how='all')
-        df['LON'] = pd.to_numeric(df['LON'], errors='coerce')
-        df['LAT'] = pd.to_numeric(df['LAT'], errors='coerce')
-        df['VAL'] = pd.to_numeric(df['VAL'], errors='coerce')
-        df_valid = df.dropna(subset=['LON', 'LAT', 'VAL']).fillna("")
+        # -------------------------------------------------------------------------
+        # 🧠 PARSING WAKTU OTOMATIS
+        # -------------------------------------------------------------------------
+        period_lower = period.lower()
+        update_lower = update_time.lower()
+        tahun = bulan = tanggal = dasarian = None
         
-        # Simpan PNG (menggunakan buf.getvalue())
-        buf = draw_print_layout(None, None, None, MAP_CONFIGS[category], period, update_time, creator, df_points=df_valid)
-        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.getvalue())
-        
-        features = []
-        for _, row in df_valid.iterrows():
-            val = row['VAL']
-            warna = get_hth_color(val, MAP_CONFIGS[category]["levels"], MAP_CONFIGS[category]["colors"])
-            nama_lok = row['NAMA_LOKASI'] if 'NAMA_LOKASI' in row else "Titik HTH"
+        words = period_lower.split()
+        if words and words[-1].isdigit(): tahun = int(words[-1])
             
-            features.append({
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [row['LON'], row['LAT']]},
-                "properties": {
-                    "val": val, "nama": nama_lok, "fill": warna, "range_text": f"{val}",
-                    "category": category.replace("_", " ").title()
+        for b_name, b_angka in BULAN_ID.items():
+            if b_name in words:
+                bulan = b_angka
+                break
+                
+        if "dasarian" in words:
+            if "i" in words and "ii" not in words: dasarian = 1
+            elif "ii" in words and "iii" not in words: dasarian = 2
+            elif "iii" in words: dasarian = 3
+        elif "bulan" not in words and words and words[0].isdigit():
+            tanggal = int(words[0])
+
+        try:
+            u_words = update_lower.split()
+            if len(u_words) >= 3 and u_words[0].isdigit():
+                update_date = datetime(int(u_words[2]), BULAN_ID.get(u_words[1], 1), int(u_words[0])).date()
+            else:
+                update_date = datetime.now().date()
+        except Exception:
+            update_date = datetime.now().date()
+            
+        # -------------------------------------------------------------------------
+        # 1. PROSES PENYIMPANAN FILE FISIK
+        # -------------------------------------------------------------------------
+        with open(os.path.join(CSV_DIR, f"{filename_base}.csv"), "wb") as f_csv: f_csv.write(content)
+        
+        if category == "hari_tanpa_hujan":
+            df_valid = pd.read_csv(io.BytesIO(content), low_memory=False)
+            df_valid = df_valid.dropna(subset=[col_lon, col_lat, col_val])
+            
+            rename_mapping = {col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL'}
+            if col_name: rename_mapping[col_name] = 'NAMA_LOKASI'
+            df_valid = df_valid.rename(columns=rename_mapping)
+            
+            buf = draw_print_layout(None, None, None, MAP_CONFIGS[category], period, update_time, creator, df_points=df_valid)
+            with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
+            
+            features = []
+            for _, row in df_valid.iterrows():
+                val = float(row['VAL']) if not math.isnan(row['VAL']) else 0.0
+                lon = float(row['LON'])
+                lat = float(row['LAT'])
+                
+                warna = get_hth_color(val, MAP_CONFIGS[category]["levels"], MAP_CONFIGS[category]["colors"])
+                nama_lok = str(row['NAMA_LOKASI']) if 'NAMA_LOKASI' in row else "Titik HTH"
+                
+                features.append({
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                    "properties": {
+                        "val": val, "nama": nama_lok, "fill": warna, "range_text": f"{val}",
+                        "category": category.replace("_", " ").title()
+                    }
+                })
+                
+            clean_geojson = {
+                "type": "FeatureCollection", "features": features,
+                "metadata": {
+                    "map_type": MAP_CONFIGS[category]["title"],
+                    "period": period, "update_time": update_time,
+                    "creator": creator, "ai_analysis": analysis_text
                 }
-            })
-            
-        clean_geojson = {
-            "type": "FeatureCollection", "features": features,
-            "metadata": {
-                "map_type": MAP_CONFIGS[category]["title"],
-                "period": period, "update_time": update_time,
-                "creator": creator, "ai_analysis": analysis_text,
-                "legend_config": MAP_CONFIGS[category]
             }
-        }
-        
-    else:
-        grid_x, grid_y, grid_z, _ = get_or_calculate_idw(content, sigma, power, col_lon, col_lat, col_val)
-        
-        # Simpan PNG & TIF (menggunakan buf.getvalue())
-        buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
-        with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.getvalue())
+            
+        else:
+            grid_x, grid_y, grid_z, _ = get_or_calculate_idw(content, sigma, power, col_lon, col_lat, col_val)
+            buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
+            with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
 
-        tif_path = os.path.join(TIF_DIR, f"{filename_base}.tif")
-        save_to_tiff(grid_x, grid_y, grid_z, tif_path)
-        
-        fig, ax = plt.subplots() 
-        contour = ax.contourf(grid_x, grid_y, grid_z, levels=MAP_CONFIGS[category]["levels"], cmap=ListedColormap(MAP_CONFIGS[category]["colors"]), norm=BoundaryNorm(MAP_CONFIGS[category]["levels"], len(MAP_CONFIGS[category]["colors"])))
-        geojson_str = geojsoncontour.contourf_to_geojson(contourf=contour, min_angle_deg=3.0, ndigits=5)
-        plt.close(fig)
-        
-        clean_geojson = clean_and_inject_geojson(geojson_str, MAP_CONFIGS[category], category, period, update_time, creator, analysis_text)
-        
-    # Simpan JSON File
-    with open(os.path.join(GEOJSON_DIR, f"{filename_base}.json"), "w") as f_json: json.dump(clean_geojson, f_json)
+            tif_path = os.path.join(TIF_DIR, f"{filename_base}.tif")
+            save_to_tiff(grid_x, grid_y, grid_z, tif_path)
+            
+            fig, ax = plt.subplots() 
+            contour = ax.contourf(grid_x, grid_y, grid_z, levels=MAP_CONFIGS[category]["levels"], cmap=ListedColormap(MAP_CONFIGS[category]["colors"]), norm=BoundaryNorm(MAP_CONFIGS[category]["levels"], len(MAP_CONFIGS[category]["colors"])))
+            geojson_str = geojsoncontour.contourf_to_geojson(contourf=contour, min_angle_deg=3.0, ndigits=5)
+            plt.close(fig)
+            
+            clean_geojson = clean_and_inject_geojson(geojson_str, MAP_CONFIGS[category], category, period, update_time, creator, analysis_text)
+            
+        with open(os.path.join(GEOJSON_DIR, f"{filename_base}.json"), "w") as f_json: 
+            json.dump(clean_geojson, f_json)
 
-    # -------------------------------------------------------------------------
-    # 2. INSERT KE POSTGRESQL (Tabel Induk: MapMetadata)
-    # -------------------------------------------------------------------------
-    new_map = MapMetadata(
-        title=MAP_CONFIGS[category]['title'],
-        category=category,
-        period=period,
-        update_time=update_time,
-        analysis_text=analysis_text,
-        png_url=f"{filename_base}.png",
-        geojson_url=f"{filename_base}.json",
-        tif_url=f"{filename_base}.tif" if category != "hari_tanpa_hujan" else None
-    )
-    db.add(new_map)
-    db.commit()
-    db.refresh(new_map)
-
-    # -------------------------------------------------------------------------
-    # 3. INSERT KE POSTGIS (Tabel Anak: MapFeature)
-    # -------------------------------------------------------------------------
-    features_to_insert = []
-    for feat in clean_geojson['features']:
-        geom_json = json.dumps(feat['geometry'])
-        
-        props = feat.get('properties', {})
-        val = props.get('val', None)
-        label = props.get('nama') if category == "hari_tanpa_hujan" else props.get('title', '')
-        
-        geom_postgis = func.ST_SetSRID(func.ST_GeomFromGeoJSON(geom_json), 4326)
-        
-        db_feat = MapFeature(
-            map_id=new_map.id,
-            val=float(val) if val is not None else 0.0,
-            category_label=label,
-            geom=geom_postgis
+        # -------------------------------------------------------------------------
+        # 2. INSERT KE DATABASE (DENGAN TRY-EXCEPT-ROLLBACK)
+        # -------------------------------------------------------------------------
+        new_map = MapMetadata(
+            title=MAP_CONFIGS[category]['title'],
+            category=category,
+            period=period,
+            tahun=tahun, bulan=bulan, tanggal=tanggal, dasarian=dasarian, 
+            update_time=update_date,
+            analysis_text=analysis_text,
+            png_url=f"{filename_base}.png",
+            geojson_url=f"{filename_base}.json",
+            tif_url=f"{filename_base}.tif" if category != "hari_tanpa_hujan" else None
         )
-        features_to_insert.append(db_feat)
-        
-    if features_to_insert:
-        db.add_all(features_to_insert)
-        db.commit()
+        db.add(new_map)
+        db.commit()      
+        db.refresh(new_map)
 
-    return {"status": "success", "filename": f"{filename_base}.png"}
+        features_to_insert = []
+        for feat in clean_geojson['features']:
+            geom_json = json.dumps(feat['geometry'])
+            props = feat.get('properties', {})
+            val = props.get('val', None)
+            label = props.get('nama') if category == "hari_tanpa_hujan" else props.get('title', '')
+            
+            geom_postgis = func.ST_SetSRID(func.ST_GeomFromGeoJSON(geom_json), 4326)
+            
+            db_feat = MapFeature(
+                map_id=new_map.id,
+                val=float(val) if val is not None else 0.0,
+                category_label=label,
+                geom=geom_postgis
+            )
+            features_to_insert.append(db_feat)
+            
+        if features_to_insert:
+            db.add_all(features_to_insert)
+            db.commit()
+
+        return {"status": "success", "filename": f"{filename_base}.png"}
+
+    except Exception as e:
+        db.rollback() 
+        print(f"🔥 ERROR SAVING ARCHIVE: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan data: {str(e)}")
 
 
 # ==============================================================================
@@ -328,7 +384,7 @@ async def get_archives(
             "title": row.title,
             "category": row.category,
             "period": row.period,
-            "update_time": row.update_time,
+            "update_time": str(row.update_time) if row.update_time else "",
             "creator": "TIM FORECASTER", 
             "filename_base": filename_base,
             "analysis_text": row.analysis_text or ""
@@ -428,22 +484,40 @@ async def get_latest_map(
             "title": latest_map.title,
             "category": latest_map.category,
             "period": latest_map.period,
-            "update_time": latest_map.update_time,
+            "update_time": str(latest_map.update_time) if latest_map.update_time else "",
             "analysis_text": latest_map.analysis_text or "",
             "image_url": f"{base_url}/static/png/{latest_map.png_url}" if latest_map.png_url else None,
             "geojson_url": f"{base_url}/static/geojson/{latest_map.geojson_url}" if latest_map.geojson_url else None
         }
     }
 
+
 @router.get("/v1/maps/search")
-def search_specific_map(category: str, period: str, db: Session = Depends(get_db)):
-    map_data = db.query(MapMetadata).filter(
+def search_specific_map(
+    category: str, 
+    year: int, 
+    month: int, 
+    dasarian: Optional[int] = None,
+    day: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(MapMetadata).filter(
         MapMetadata.category == category,
-        MapMetadata.period.ilike(f"%{period}%")
-    ).order_by(MapMetadata.id.desc()).first()
+        MapMetadata.tahun == year,
+        MapMetadata.bulan == month
+    )
+    
+    if dasarian is not None:
+        query = query.filter(MapMetadata.dasarian == dasarian)
+    elif day is not None:
+        query = query.filter(MapMetadata.tanggal == day)
+    else:
+        query = query.filter(MapMetadata.dasarian.is_(None), MapMetadata.tanggal.is_(None))
+
+    map_data = query.order_by(MapMetadata.id.desc()).first()
     
     if not map_data:
-        raise HTTPException(status_code=404, detail=f"Data untuk {period} tidak ditemukan.")
+        raise HTTPException(status_code=404, detail="Data peta yang dicari tidak ditemukan.")
         
     base_url = "https://webgis.bmkgaptpranoto.com"
     
@@ -454,7 +528,7 @@ def search_specific_map(category: str, period: str, db: Session = Depends(get_db
             "title": map_data.title,
             "category": map_data.category,
             "period": map_data.period,
-            "update_time": map_data.update_time,
+            "update_time": str(map_data.update_time) if map_data.update_time else "",
             "analysis_text": map_data.analysis_text or "",
             "image_url": f"{base_url}/static/png/{map_data.png_url}" if map_data.png_url else None,
             "geojson_url": f"{base_url}/static/geojson/{map_data.geojson_url}" if map_data.geojson_url else None

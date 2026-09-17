@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
 from config import Base
@@ -12,7 +12,18 @@ class MapMetadata(Base):
     title = Column(String, index=True)
     category = Column(String, index=True)
     period = Column(String)
-    update_time = Column(String)
+    
+    # ---------------------------------------------------
+    # 🆕 KOLOM BARU UNTUK FILTER PENCARIAN (MESIN PENCARI)
+    # ---------------------------------------------------
+    tahun = Column(Integer, nullable=True)
+    bulan = Column(Integer, nullable=True)
+    tanggal = Column(Integer, nullable=True)
+    dasarian = Column(Integer, nullable=True)
+    
+    # Kita ubah jadi Date karena di pgAdmin udah jadi format Date
+    update_time = Column(Date, nullable=True) 
+    
     analysis_text = Column(Text, nullable=True)
     
     # Cuma nyimpen URL/Path lokasi file (BUKAN file fisiknya)
