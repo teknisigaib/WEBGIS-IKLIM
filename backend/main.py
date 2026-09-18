@@ -13,7 +13,13 @@ from routes import router
 # Import nama folder dari config biar dinamis
 from config import PNG_DIR, GEOJSON_DIR, CSV_DIR, TIF_DIR
 
-app = FastAPI(title="WebGIS BMKG Kaltim API")
+# 1. Dokumentasi FULL (admin) dipindah ke /admin-docs biar aman dari publik
+app = FastAPI(
+    title="WebGIS BMKG Kaltim API",
+    docs_url="/admin-docs",
+    redoc_url="/admin-redoc",
+    openapi_url="/admin-openapi.json"  # <--- TAMBAHAN KRUSIAL INI!
+)
 
 # Setting CORS biar Frontend React bisa ngobrol sama Backend
 app.add_middleware(
@@ -45,18 +51,21 @@ app.mount("/static/tif", StaticFiles(directory=TIF_DIR), name="static_tif")
 # 📚 ENDPOINT KHUSUS DOKUMENTASI PUBLIK (SWAGGER UI)
 # ==============================================================
 
-# Rute untuk menyajikan file JSON mentahnya
-@app.get("/public-openapi.json", include_in_schema=False)
-async def get_public_openapi():
-    with open("openapi_bmkg_public.json", "r") as f:
-        return JSONResponse(content=json.load(f))
+# 2. Rute untuk menyajikan file JSON mentahnya di /openapi.json (sesuai settingan NPM lu)
+@app.get("/openapi.json", include_in_schema=False)
+async def get_openapi_endpoint():
+    try:
+        with open("openapi_bmkg_public.json", "r") as f:
+            return JSONResponse(content=json.load(f))
+    except FileNotFoundError:
+        return {"error": "File openapi_bmkg_public.json tidak ditemukan"}
 
-# Rute untuk menampilkan halaman Swagger UI
-@app.get("/documentation", include_in_schema=False)
-async def public_api_docs():
+# 3. Rute untuk menampilkan halaman Swagger UI publik di /docs (sesuai settingan NPM lu)
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
     return get_swagger_ui_html(
-        openapi_url="/public-openapi.json",
-        title="Dokumentasi API Publik BMKG Kaltim",
+        openapi_url="/openapi.json",
+        title="API Publik WebGIS BMKG Kaltim",
         swagger_favicon_url="https://www.bmkg.go.id/asset/img/favicon.ico",
         swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
         swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"
