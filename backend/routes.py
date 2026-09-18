@@ -12,13 +12,13 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
-from datetime import date, datetime  
+from datetime import date, datetime, timezone  
 import math
 
 # Import fungsi dan variabel dari file config, models, & map_engine
 from config import MAP_CONFIGS, CSV_DIR, PNG_DIR, GEOJSON_DIR, TIF_DIR, get_db
 from models import MapMetadata, MapFeature
-from map_engine import get_hth_color, get_or_calculate_idw, clean_and_inject_geojson, draw_print_layout, save_to_tiff
+from map_engine import get_hth_color, get_hth_label, get_or_calculate_idw, clean_and_inject_geojson, draw_print_layout, save_to_tiff
 from ai_service import generate_ai_analysis
 
 # Inisialisasi Router
@@ -85,8 +85,8 @@ async def generate_map(
     file_bytes = await validate_csv_file(file)
     
     if category == "hari_tanpa_hujan":
-        # 1. BACA CSV (low_memory=False hilangkan DtypeWarning)
-        df = pd.read_csv(file.file, low_memory=False)
+        # 1. BACA CSV DARI MEMORY (AMAN DARI CRASH)
+        df = pd.read_csv(io.BytesIO(file_bytes), low_memory=False)
         
         # 2. RENAME KOLOM SESUAI PILIHAN USER DI FRONTEND
         rename_mapping = { col_lon: 'LON', col_lat: 'LAT', col_val: 'VAL' }
@@ -108,7 +108,10 @@ async def generate_map(
         features = []
         for _, row in df_valid.iterrows():
             val = row['VAL']
+            # Tarik warna dan label legenda menggunakan fungsi dari map_engine
             warna = get_hth_color(val, map_config["levels"], map_config["colors"])
+            kriteria_label = get_hth_label(val, map_config["levels"], map_config["labels"])
+            
             nama_lok = row['NAMA_LOKASI'] if 'NAMA_LOKASI' in row else "Titik HTH"
             
             features.append({
@@ -119,22 +122,23 @@ async def generate_map(
                     "nama": nama_lok,
                     "fill": warna,
                     "range_text": f"{val}",
-                    "category": category.replace("_", " ").title()
+                    "category": kriteria_label # Teks label kriteria valid
                 }
             })
             
         ai_text = generate_ai_analysis(None, None, None, map_config['title'], period, update_time, map_config, raw_data=raw_data)
         
         clean_geojson = {
-            "type": "FeatureCollection", 
             "features": features,
+            "type": "FeatureCollection", 
             "metadata": {
                 "map_type": map_config["title"],
                 "period": period,
                 "update_time": update_time,
                 "creator": creator,
+                "author": "Stasiun Meteorologi Kelas II Aji Pangeran Tumenggung Pranoto - Samarinda",
                 "ai_analysis": ai_text,
-                "legend_config": map_config
+                "legend": map_config  # <--- WAJIB ADA DI SINI JUGA BUAT PREVIEW 🛠️
             }
         }
         
@@ -152,7 +156,7 @@ async def generate_map(
         
     return {
         "status": "success", 
-        "data": { "geojson": clean_geojson, "legend_config": map_config, "analysis_text": ai_text, "raw_data": raw_data }
+        "data": { "geojson": clean_geojson, "legend": map_config, "analysis_text": ai_text, "raw_data": raw_data }
     }
 
 
@@ -269,39 +273,79 @@ async def save_archive(
             df_valid = df_valid.rename(columns=rename_mapping)
             
             buf = draw_print_layout(None, None, None, MAP_CONFIGS[category], period, update_time, creator, df_points=df_valid)
-            with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
+            # FIX GAMBAR PUTIH: Pakai buf.getvalue()
+            with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.getvalue())
             
+            # =========================================================
+            # 🛠️ PERAKITAN FITUR HTH (STANDAR IDW)
+            # =========================================================
             features = []
-            for _, row in df_valid.iterrows():
-                val = float(row['VAL']) if not math.isnan(row['VAL']) else 0.0
+            for idx, row in df_valid.reset_index().iterrows():
+                val = float(row['VAL']) if not pd.isna(row['VAL']) else 0.0
                 lon = float(row['LON'])
                 lat = float(row['LAT'])
                 
                 warna = get_hth_color(val, MAP_CONFIGS[category]["levels"], MAP_CONFIGS[category]["colors"])
+                kriteria_label = get_hth_label(val, MAP_CONFIGS[category]["levels"], MAP_CONFIGS[category]["labels"])
                 nama_lok = str(row['NAMA_LOKASI']) if 'NAMA_LOKASI' in row else "Titik HTH"
                 
                 features.append({
+                    "id": f"{category}_{idx}", # <-- STANDAR IDW: ID Unik
                     "type": "Feature",
                     "geometry": {"type": "Point", "coordinates": [lon, lat]},
                     "properties": {
                         "val": val, "nama": nama_lok, "fill": warna, "range_text": f"{val}",
-                        "category": category.replace("_", " ").title()
+                        "category": kriteria_label # <-- STANDAR IDW: Kategori langsung berupa string teks
                     }
                 })
                 
+            # =========================================================
+            # 🛠️ PERAKITAN METADATA & LEGENDA (STANDAR IDW)
+            # =========================================================
+            legend_info = []
+            levels = MAP_CONFIGS[category]["levels"]
+            colors = MAP_CONFIGS[category]["colors"]
+            labels = MAP_CONFIGS[category].get("labels", [])
+            
+            for i in range(len(levels)-1):
+                v_min, v_max = levels[i], levels[i+1]
+                range_txt = f"{v_min} - {v_max}" if v_max < 1000 else f"> {v_min}"
+                
+                if "custom_ranges" in MAP_CONFIGS[category] and i < len(MAP_CONFIGS[category]["custom_ranges"]):
+                    range_txt = MAP_CONFIGS[category]["custom_ranges"][i].strip()
+                    
+                legend_info.append({
+                    "min_value": v_min, 
+                    "max_value": v_max, 
+                    "range_text": range_txt,
+                    "color": colors[i] if i < len(colors) else "#cccccc", 
+                    "category": labels[i] if i < len(labels) else ""
+                })
+
             clean_geojson = {
-                "type": "FeatureCollection", "features": features,
+                
+                "features": features,
+                "type": "FeatureCollection", 
                 "metadata": {
-                    "map_type": MAP_CONFIGS[category]["title"],
-                    "period": period, "update_time": update_time,
-                    "creator": creator, "ai_analysis": analysis_text
+                    "map_type": MAP_CONFIGS[category]["title"].upper(),
+                    "system_category": category,
+                    "period": period, 
+                    "update_time": update_time,
+                    "creator": creator,
+                    "unit": MAP_CONFIGS[category].get("unit", "hari"),
+                    "province": "Kalimantan Timur",
+                    "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "author": "Stasiun Meteorologi Kelas II Aji Pangeran Tumenggung Pranoto - Samarinda",
+                    "analysis_text": analysis_text, # <-- STANDAR IDW: Sesuai nama kolom Postgre
+                    "legend": legend_info           # <-- STANDAR IDW: Array Object (React-friendly)
                 }
             }
             
         else:
             grid_x, grid_y, grid_z, _ = get_or_calculate_idw(content, sigma, power, col_lon, col_lat, col_val)
             buf = draw_print_layout(grid_x, grid_y, grid_z, MAP_CONFIGS[category], period, update_time, creator)
-            with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.read())
+            # FIX GAMBAR PUTIH: Pakai buf.getvalue()
+            with open(os.path.join(PNG_DIR, f"{filename_base}.png"), "wb") as f_png: f_png.write(buf.getvalue())
 
             tif_path = os.path.join(TIF_DIR, f"{filename_base}.tif")
             save_to_tiff(grid_x, grid_y, grid_z, tif_path)
@@ -338,8 +382,9 @@ async def save_archive(
         for feat in clean_geojson['features']:
             geom_json = json.dumps(feat['geometry'])
             props = feat.get('properties', {})
-            val = props.get('val', None)
-            label = props.get('nama') if category == "hari_tanpa_hujan" else props.get('title', '')
+            val = props.get('val') if category == "hari_tanpa_hujan" else props.get('min_value')
+            
+            label = props.get('nama') if category == "hari_tanpa_hujan" else props.get('range_text', '')
             
             geom_postgis = func.ST_SetSRID(func.ST_GeomFromGeoJSON(geom_json), 4326)
             
@@ -485,6 +530,7 @@ async def get_latest_map(
             "category": latest_map.category,
             "period": latest_map.period,
             "update_time": str(latest_map.update_time) if latest_map.update_time else "",
+            "author": "Stasiun Meteorologi Kelas II Aji Pangeran Tumenggung Pranoto - Samarinda",
             "analysis_text": latest_map.analysis_text or "",
             "image_url": f"{base_url}/static/png/{latest_map.png_url}" if latest_map.png_url else None,
             "geojson_url": f"{base_url}/static/geojson/{latest_map.geojson_url}" if latest_map.geojson_url else None
@@ -529,6 +575,7 @@ def search_specific_map(
             "category": map_data.category,
             "period": map_data.period,
             "update_time": str(map_data.update_time) if map_data.update_time else "",
+            "author": "Stasiun Meteorologi Kelas II Aji Pangeran Tumenggung Pranoto - Samarinda",
             "analysis_text": map_data.analysis_text or "",
             "image_url": f"{base_url}/static/png/{map_data.png_url}" if map_data.png_url else None,
             "geojson_url": f"{base_url}/static/geojson/{map_data.geojson_url}" if map_data.geojson_url else None

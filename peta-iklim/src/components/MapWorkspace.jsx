@@ -30,9 +30,14 @@ export default function MapWorkspace({ mapData, isLoading }) {
   const batasKabStyle = { fillColor: 'transparent', color: '#1e293b', weight: 1.5, opacity: 0.6, dashArray: '6, 6', fillOpacity: 0 };
 
   const geoJsonStyle = (feature) => {
-    const colorHex = feature.properties.fill || "#cccccc";
-    return { fillColor: colorHex, fillOpacity: polygonOpacity, color: colorHex, weight: 0, opacity: 1.0 };
+  const colorHex = feature.properties.fill || "#cccccc";
+  return { 
+    fillColor: colorHex, 
+    fillOpacity: polygonOpacity, 
+    color: 'transparent', // <--- Bikin pinggiran benar-benar gaib
+    weight: 0 
   };
+};
 
   const pointToLayer = (feature, latlng) => {
     const colorHex = feature.properties.fill || "#cccccc";
@@ -73,8 +78,8 @@ export default function MapWorkspace({ mapData, isLoading }) {
         mouseout: (e) => { 
           const l = e.target; 
           if(feature.geometry.type !== "Point") {
-            l.setStyle({ weight: 0, color: feature.properties.fill }); 
-          }
+            l.setStyle({ weight: 0, color: 'transparent' }); // <--- Sesuaikan dengan gaya awal
+         }
         }
       });
     }

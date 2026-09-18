@@ -41,7 +41,22 @@ def get_hth_color(val, levels, colors):
         elif val > 60: return colors[6]        
     except:
         pass
-    return colors[0] 
+    return colors[0]
+
+def get_hth_label(val, levels, labels):
+    """Fungsi pasangan get_hth_color untuk menarik teks legenda/label"""
+    try:
+        val = float(val)
+        if val == 0: return labels[0]          
+        elif 1 <= val <= 5: return labels[1]   
+        elif 6 <= val <= 10: return labels[2]  
+        elif 11 <= val <= 20: return labels[3] 
+        elif 21 <= val <= 30: return labels[4] 
+        elif 31 <= val <= 60: return labels[5] 
+        elif val > 60: return labels[6]        
+    except:
+        pass
+    return labels[0] if labels else "Titik HTH" 
 
 
 def get_or_calculate_idw(content, sigma, power, col_lon="LON", col_lat="LAT", col_val="VAL"):
@@ -144,10 +159,13 @@ def clean_and_inject_geojson(geojson_str, map_config, category, period, update_t
                     range_text = map_config["custom_ranges"][i].strip()
                 break
                 
+        # --- PERUBAHAN DI SINI: HANYA MENYISAKAN DATA MURNI (TANPA STYLING VISUAL) ---
         feature["properties"] = {
-            "min_value": v_min, "max_value": v_max, "range_text": range_text,
-            "category": category_label, "fill": color_hex, "fill-opacity": 0.85, 
-            "stroke": color_hex, "stroke-width": 0, "stroke-opacity": 1.0
+            "min_value": v_min, 
+            "max_value": v_max, 
+            "range_text": range_text,
+            "category": category_label, 
+            "fill": color_hex
         }
         
         # 3. Filter Pembersih Geometri (Quality Control Area)

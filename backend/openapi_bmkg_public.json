@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "API Publik WebGIS BMKG Kaltim",
-    "description": "Dokumentasi OpenAPI untuk endpoint publik WebGIS Cuaca & Iklim BMKG Kaltim. Endpoint ini bersifat Read-Only dan dapat diakses tanpa autentikasi (tanpa API Key) oleh sistem eksternal.",
+    "description": "Dokumentasi OpenAPI untuk endpoint publik WebGIS Cuaca & Iklim BMKG Kaltim. Endpoint ini bersifat Read-Only dan dapat diakses tanpa autentikasi (tanpa API Key) oleh sistem eksternal maupun website utama.",
     "version": "1.0.0",
     "contact": {
       "name": "Tim IT BMKG APT Pranoto Samarinda"
@@ -21,12 +21,12 @@
           "Public Maps"
         ],
         "summary": "Mendapatkan Peta Terbaru",
-        "description": "Mengembalikan data arsip peta yang paling terakhir kali di-generate oleh sistem. Dapat difilter berdasarkan kategori peta tertentu.",
+        "description": "Mengembalikan data arsip peta yang paling terakhir kali di-generate oleh sistem. Jika parameter `category` tidak diisi, akan mengembalikan peta apapun yang paling baru masuk ke database.",
         "parameters": [
           {
             "name": "category",
             "in": "query",
-            "description": "Filter kunci kategori peta (Contoh: `hari_tanpa_hujan`, `prakiraan_hujan_dasarian`)",
+            "description": "Filter menggunakan kunci kategori peta (Contoh: `hari_tanpa_hujan`, `sebaran_hujan_harian`).",
             "required": false,
             "schema": {
               "type": "string"
@@ -63,51 +63,24 @@
           "Public Maps"
         ],
         "summary": "Pencarian Peta Spesifik",
-        "description": "Mencari arsip peta secara spesifik berdasarkan parameter waktu (Tahun, Bulan, Dasarian, atau Tanggal).",
+        "description": "Mencari arsip peta secara spesifik berdasarkan nama kategori dan teks periode waktu. Pencarian bersifat fleksibel karena menggunakan metode pencarian teks (kemiripan kata).",
         "parameters": [
           {
             "name": "category",
             "in": "query",
-            "description": "Kunci kategori peta (Contoh: `sebaran_hujan_harian`)",
+            "description": "Kunci kategori peta (Contoh: `sebaran_hujan_harian`, `hari_tanpa_hujan`).",
             "required": true,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "year",
+            "name": "period",
             "in": "query",
-            "description": "Tahun rilis peta (Contoh: 2026)",
+            "description": "Teks periode yang dicari. Bersifat *case insensitive* (Contoh: `18 September 2026`, `Dasarian I`, atau sekadar `September`).",
             "required": true,
             "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "month",
-            "in": "query",
-            "description": "Angka bulan (1 untuk Januari - 12 untuk Desember)",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "dasarian",
-            "in": "query",
-            "description": "Angka dasarian (1, 2, atau 3). Kosongkan jika mencari peta periode bulanan.",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "day",
-            "in": "query",
-            "description": "Angka tanggal (1 - 31). Gunakan hanya untuk mencari peta periode harian.",
-            "required": false,
-            "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -166,8 +139,7 @@
               },
               "update_time": {
                 "type": "string",
-                "format": "date",
-                "example": "2026-09-10"
+                "example": "18 September 2026"
               },
               "analysis_text": {
                 "type": "string",
@@ -176,12 +148,12 @@
               "image_url": {
                 "type": "string",
                 "format": "uri",
-                "example": "https://webgis.bmkgaptpranoto.com/static/png/hari_tanpa_hujan.png"
+                "example": "https://webgis.bmkgaptpranoto.com/static/png/hari_tanpa_hujan_DASARIAN_I_SEPTEMBER_2026_12345.png"
               },
               "geojson_url": {
                 "type": "string",
                 "format": "uri",
-                "example": "https://webgis.bmkgaptpranoto.com/static/geojson/hari_tanpa_hujan.json"
+                "example": "https://webgis.bmkgaptpranoto.com/static/geojson/hari_tanpa_hujan_DASARIAN_I_SEPTEMBER_2026_12345.json"
               }
             }
           }
@@ -192,7 +164,7 @@
         "properties": {
           "detail": {
             "type": "string",
-            "example": "Data peta belum tersedia di server."
+            "example": "Data peta untuk periode tersebut tidak ditemukan."
           }
         }
       }
