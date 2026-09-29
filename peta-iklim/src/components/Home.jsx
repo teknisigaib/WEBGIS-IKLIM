@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Map, Archive, Activity, FileText, ChevronRight, BarChart2, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Map, Archive, Activity, FileText, ChevronRight, BarChart2, CheckCircle2, XCircle, Clock, LogOut } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
-
-// Konfigurasi Header untuk nembus gembok keamanan Backend
-const API_KEY = "Administrator96607"; // Gembok rahasia yang sama dengan di routes.py backend
-const axiosConfig = {
-  headers: {
-    "x-api-key": API_KEY
-  }
-};
 
 export default function Home() {
   const [time, setTime] = useState(new Date());
@@ -28,8 +20,12 @@ export default function Home() {
   useEffect(() => {
     const fetchRecent = async () => {
       try {
-        // Optimasi: Langsung minta ke server limit=3 saja, nggak usah narik semua data
-        const response = await axios.get(`${API_URL}/archives?skip=0&limit=3`, axiosConfig);
+        // Ambil token dari brankas browser
+        const token = localStorage.getItem('bmkg_token') || "";
+        const config = { headers: { "x-api-key": token } };
+
+        // Optimasi: Langsung minta ke server limit=3 saja
+        const response = await axios.get(`${API_URL}/archives?skip=0&limit=3`, config);
         
         if (response.data.status === "success") {
           setRecentMaps(response.data.data);
@@ -42,6 +38,12 @@ export default function Home() {
     };
     fetchRecent();
   }, []);
+
+  // Fungsi Logout
+  const handleLogout = () => {
+    localStorage.removeItem('bmkg_token');
+    window.location.href = '/login';
+  };
 
   const formatWITA = time.toLocaleTimeString('id-ID', { timeZone: 'Asia/Makassar', hour12: false });
   const formatUTC = time.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false });
@@ -75,6 +77,11 @@ export default function Home() {
               <div className="font-bold text-slate-700">{formatUTC} <span className="text-[10px] text-slate-500">UTC</span></div>
             </div>
           </div>
+
+          {/* Tombol Keluar / Logout */}
+          <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-md transition-colors text-xs font-bold">
+            <LogOut size={16} /> Keluar
+          </button>
         </div>
       </nav>
 
@@ -157,7 +164,7 @@ export default function Home() {
                     <div className="text-right">
                       <p className="text-xs font-bold text-slate-700 mb-0.5">{map.update_time}</p>
                       <p className="text-[10px] text-slate-500 font-medium">
-                        Oleh: {map.creator}
+                        Oleh: {map.creator || "TIM FORECASTER"}
                       </p>
                     </div>
                   </div>
@@ -176,7 +183,7 @@ export default function Home() {
 
       {/* FOOTER DIPERBARUI */}
       <footer className="py-6 flex flex-col items-center gap-1 text-center text-xs text-slate-500 font-medium">
-        <span>&copy; 2026 Badan Meteorologi Klimatologi dan Geofisika Provinsi Kalimantan Timur.</span>
+        <span>&copy; {new Date().getFullYear()} Badan Meteorologi Klimatologi dan Geofisika Provinsi Kalimantan Timur.</span>
         <span>Stasiun Meteorologi APT Pranoto Samarinda</span>
       </footer>
     </div>

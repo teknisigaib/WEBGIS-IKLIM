@@ -32,16 +32,38 @@ BULAN_ID = {
     "juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11, "desember": 12
 }
 
-# ==============================================================================
-# 🛡️ SISTEM KEAMANAN TERPADU
-# ==============================================================================
+# ==========================================
+# 1. UPDATE FUNGSI GEMBOK (MIDDLEWARE)
+# ==========================================
 def verify_forecaster(x_api_key: str = Header(None)):
-    """
-    Fungsi otentikasi yang memverifikasi kunci akses API melalui Environment Variables.
-    """
-    SECRET_KEY = os.getenv("API_SECRET_KEY", "Administrator96607") 
+    # Ambil SECRET_KEY dari .env. 
+    # Parameter kedua ("Administrator96607") adalah fallback kalau file .env belum dibikin
+    SECRET_KEY = os.getenv("API_SECRET_KEY") 
+    
     if x_api_key != SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Akses Ditolak! Kredensial tidak valid.")
+        raise HTTPException(status_code=403, detail="Akses Ditolak! Silakan login terlebih dahulu.")
+
+
+# ==========================================
+# 2. SCHEMA & ENDPOINT LOGIN
+# ==========================================
+class LoginRequest(BaseModel):
+    password: str
+
+@router.post("/v1/auth/login")
+async def login_forecaster(data: LoginRequest):
+    # Ambil kunci dari .env
+    SECRET_KEY = os.getenv("API_SECRET_KEY")
+    
+    if data.password == SECRET_KEY:
+        return {
+            "status": "success", 
+            "message": "Login berhasil!",
+            "token": SECRET_KEY # Ini yang disimpen sama React ke localStorage
+        }
+    else:
+        # Kalau salah password, tolak dengan status 401 Unauthorized
+        raise HTTPException(status_code=401, detail="Password salah! Anda tidak memiliki akses.")
 
 async def validate_csv_file(file: UploadFile):
     """
@@ -53,7 +75,7 @@ async def validate_csv_file(file: UploadFile):
     
     file_bytes = await file.read()
     if len(file_bytes) > 20 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Kapasitas file melebihi batas maksimal yang diizinkan (5MB).")
+        raise HTTPException(status_code=400, detail="Kapasitas file melebihi batas maksimal yang diizinkan (20MB).")
     
     await file.seek(0)
     return file_bytes

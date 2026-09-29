@@ -2,41 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
-  Search, Eye, Download, Trash2, ArrowLeft, Archive, CloudRain, 
+  Search, Eye, Download, Trash2, ArrowLeft, CloudRain, 
   Wind, RefreshCw, FileJson, FileSpreadsheet, AlertTriangle, Bot, Edit3,
-  CheckCircle2, AlertCircle, X, Check, Copy, ChevronDown, Map, Calendar, Clock, Layers
+  CheckCircle2, AlertCircle, X, Check, Copy, ChevronDown, Map, Calendar, Clock, Layers, Filter
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Gembok rahasia
-const API_KEY = "Administrator96607"; 
-const axiosConfig = {
-  headers: { "x-api-key": API_KEY }
+const CATEGORY_MAP = {
+  prakiraan_hujan_dasarian: { label: "Prakiraan Hujan Dasarian", icon: <CloudRain size={14}/> },
+  prakiraan_hujan_bulanan: { label: "Prakiraan Hujan Bulanan", icon: <CloudRain size={14}/> },
+  prakiraan_sifat_dasarian: { label: "Prakiraan Sifat Dasarian", icon: <Wind size={14}/> },
+  prakiraan_sifat_bulanan: { label: "Prakiraan Sifat Bulanan", icon: <Wind size={14}/> },
+  analisis_hujan_dasarian: { label: "Analisis Hujan Dasarian", icon: <CloudRain size={14}/> },
+  analisis_hujan_bulanan: { label: "Analisis Hujan Bulanan", icon: <CloudRain size={14}/> },
+  analisis_sifat_bulanan: { label: "Analisis Sifat Bulanan", icon: <Wind size={14}/> },
+  analisis_hari_hujan_bulanan: { label: "Analisis Hari Hujan", icon: <Calendar size={14}/> },
+  hari_tanpa_hujan: { label: "Hari Tanpa Hujan", icon: <Map size={14}/> }
 };
 
-const CATEGORY_MAP = {
-  prakiraan_hujan_dasarian: { label: "Prakiraan Hujan Dasarian", icon: <CloudRain size={16}/> },
-  prakiraan_hujan_bulanan: { label: "Prakiraan Hujan Bulanan", icon: <CloudRain size={16}/> },
-  prakiraan_sifat_dasarian: { label: "Prakiraan Sifat Dasarian", icon: <Wind size={16}/> },
-  prakiraan_sifat_bulanan: { label: "Prakiraan Sifat Bulanan", icon: <Wind size={16}/> },
-  analisis_hujan_dasarian: { label: "Analisis Hujan Dasarian", icon: <CloudRain size={16}/> },
-  analisis_hujan_bulanan: { label: "Analisis Hujan Bulanan", icon: <CloudRain size={16}/> },
-  analisis_sifat_bulanan: { label: "Analisis Sifat Bulanan", icon: <Wind size={16}/> },
-  analisis_hari_hujan_bulanan: { label: "Analisis Hari Hujan", icon: <Calendar size={16}/> },
-  hari_tanpa_hujan: { label: "Hari Tanpa Hujan", icon: <Map size={16}/> }
-};
+const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const YEARS = Array.from({length: 10}, (_, i) => new Date().getFullYear() - 2 + i);
 
 export default function DashboardArsip() {
   const [archiveData, setArchiveData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // State Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("ALL");
+  const [filterMonth, setFilterMonth] = useState("ALL");
+  const [filterYear, setFilterYear] = useState("ALL");
   
   // State Pagination
   const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [totalData, setTotalData] = useState(0);
   const limit = 20;
   
   const [previewData, setPreviewData] = useState(null); 
@@ -58,7 +58,10 @@ export default function DashboardArsip() {
     setIsLoading(true);
     try {
       const currentSkip = reset ? 0 : skip;
-      const response = await axios.get(`${API_URL}/archives?skip=${currentSkip}&limit=${limit}`);
+      const token = localStorage.getItem('bmkg_token') || "";
+      const config = { headers: { "x-api-key": token } };
+
+      const response = await axios.get(`${API_URL}/archives?skip=${currentSkip}&limit=${limit}`, config);
       
       if (response.data.status === "success") {
         if (reset) {
@@ -68,7 +71,6 @@ export default function DashboardArsip() {
         }
         setSkip(currentSkip + limit);
         setHasMore(response.data.pagination.has_more);
-        setTotalData(response.data.pagination.total_data);
       }
     } catch (error) { 
       showToast("Gagal mengambil data arsip dari server.", "error");
@@ -84,7 +86,10 @@ export default function DashboardArsip() {
   const executeDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const response = await axios.delete(`${API_URL}/archives/${deleteTarget.id}`, axiosConfig);
+      const token = localStorage.getItem('bmkg_token') || "";
+      const config = { headers: { "x-api-key": token } };
+
+      const response = await axios.delete(`${API_URL}/archives/${deleteTarget.id}`, config);
       if (response.data.status === "success") {
         showToast(`Arsip "${deleteTarget.title}" berhasil dihapus.`, "success");
         setDeleteTarget(null); 
@@ -99,9 +104,12 @@ export default function DashboardArsip() {
     if (!previewData) return;
     setIsSavingEdit(true);
     try {
+      const token = localStorage.getItem('bmkg_token') || "";
+      const config = { headers: { "x-api-key": token } };
+
       await axios.put(`${API_URL}/archives/${previewData.id}/analysis`, {
         analysis_text: editAnalysisText
-      }, axiosConfig);
+      }, config);
       
       setPreviewData({...previewData, analysis: editAnalysisText});
       setIsEditing(false);
@@ -132,158 +140,155 @@ export default function DashboardArsip() {
     window.open(`${API_URL}/archives/download/${type}/${filenameBase}`, '_blank'); 
   };
 
+  // LOGIKA FILTERING
   const filteredData = archiveData.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.period.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCat = filterCategory === "ALL" || item.category === filterCategory;
-    return matchesSearch && matchesCat;
+    const matchesMonth = filterMonth === "ALL" || item.period.toLowerCase().includes(filterMonth.toLowerCase());
+    const matchesYear = filterYear === "ALL" || item.period.includes(filterYear.toString());
+    
+    return matchesSearch && matchesCat && matchesMonth && matchesYear;
   });
 
   return (
-    <div style={{ fontFamily: "'Poppins', sans-serif" }} className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col selection:bg-blue-200 relative">
+    <div style={{ fontFamily: "'Poppins', sans-serif" }} className="min-h-screen bg-[#F8FAFC] text-slate-700 flex flex-col relative">
       
       {/* HEADER NAVIGASI */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 sticky top-0 z-40 flex items-center justify-between shadow-sm">
-        <Link to="/" className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors bg-white border border-slate-200 hover:border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-xl shadow-sm">
-          <ArrowLeft size={16} /> Kembali
+      <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-40 flex items-center justify-between shadow-sm">
+        <Link className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors" to="/">
+          <ArrowLeft size={16}/> Kembali ke Beranda
         </Link>
-        <button onClick={() => fetchArchives(true)} title="Muat Ulang Data" className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 shadow-sm px-4 py-2 rounded-xl transition-all">
-          <RefreshCw size={14} className={isLoading && skip === 0 ? "animate-spin text-blue-600" : ""} /> Refresh Data
+        <button onClick={() => fetchArchives(true)} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors bg-white px-4 py-2 rounded border border-slate-200 hover:bg-slate-50">
+          <RefreshCw size={14} className={isLoading && skip === 0 ? "animate-spin text-blue-600" : ""} /> Segarkan
         </button>
       </div>
 
-      <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-8 animate-fade-in-up">
+      <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
         
-        {/* STATISTIK DASHBOARD */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 transition-all relative overflow-hidden flex justify-between items-center cursor-default">
-            <div className="relative z-10">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Total Arsip Database</p>
-              <h3 className="text-4xl font-black text-slate-800">{totalData || archiveData.length}</h3>
-            </div>
-            <div className="relative z-10 h-14 w-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-              <Archive size={26} strokeWidth={2} />
-            </div>
-          </div>
-          <div className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 transition-all relative overflow-hidden flex justify-between items-center cursor-default">
-            <div className="relative z-10">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Data Peta Curah Hujan</p>
-              <h3 className="text-4xl font-black text-slate-800">{archiveData.filter(i=>i.category.includes('hujan')).length}</h3>
-            </div>
-            <div className="relative z-10 h-14 w-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
-              <CloudRain size={26} strokeWidth={2} />
-            </div>
-          </div>
-          <div className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 transition-all relative overflow-hidden flex justify-between items-center cursor-default">
-            <div className="relative z-10">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Data Peta Sifat & HTH</p>
-              <h3 className="text-4xl font-black text-slate-800">{archiveData.filter(i=>!i.category.includes('hujan')).length}</h3>
-            </div>
-            <div className="relative z-10 h-14 w-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
-              <Wind size={26} strokeWidth={2} />
-            </div>
-          </div>
-        </div>
-
-        {/* AREA PENCARIAN & FILTER PILLS */}
-        <div className="space-y-4">
-          <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50 transition-all">
-            <Search className="ml-3 text-slate-400" size={20} />
+        {/* PANEL PENCARIAN & FILTER WAKTU (Lebih Simpel) */}
+        <div className="flex flex-col md:flex-row gap-3">
+          {/* Search Bar */}
+          <div className="flex-1 flex items-center gap-3 bg-white px-4 py-2 rounded-lg border border-slate-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all shadow-sm">
+            <Search className="text-slate-400" size={16}/>
             <input 
               type="text" 
-              placeholder="Cari berdasarkan judul peta atau periode (contoh: Oktober 2026)..." 
-              className="w-full px-3 py-3 bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400" 
+              placeholder="Cari berdasarkan judul peta atau periode..." 
+              className="w-full bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400" 
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
 
-          {/* HORIZONTAL SCROLLABLE CATEGORY PILLS */}
-          <div className="flex gap-2 overflow-x-auto pb-2 pt-1 custom-scrollbar">
-            <button 
-              onClick={() => setFilterCategory("ALL")}
-              className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-sm border ${filterCategory === "ALL" ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
-            >
-              <Layers size={14}/> Semua Peta
-            </button>
-            {Object.entries(CATEGORY_MAP).map(([key, data]) => (
-              <button 
-                key={key}
-                onClick={() => setFilterCategory(key)}
-                className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-sm border ${filterCategory === key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'}`}
+          {/* Filter Waktu */}
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-2 text-slate-500 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm w-full md:w-auto">
+              <Filter size={14}/>
+              <select 
+                value={filterMonth} 
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer w-full md:w-32"
               >
-                {data.icon} {data.label}
-              </button>
-            ))}
+                <option value="ALL">Semua Bulan</option>
+                {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2 text-slate-500 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm w-full md:w-auto">
+              <Calendar size={14}/>
+              <select 
+                value={filterYear} 
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer w-full md:w-24"
+              >
+                <option value="ALL">Semua Tahun</option>
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* MODERN CARD LIST VIEW */}
-        <div className="space-y-4">
+        {/* KATEGORI PILLS (Lebih Ringkas) */}
+        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+          <button 
+            onClick={() => setFilterCategory("ALL")}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all border ${filterCategory === "ALL" ? 'bg-slate-700 text-white border-slate-700 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+          >
+            <Layers size={14}/> Semua Peta
+          </button>
+          {Object.entries(CATEGORY_MAP).map(([key, data]) => (
+            <button 
+              key={key}
+              onClick={() => setFilterCategory(key)}
+              className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all border ${filterCategory === key ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            >
+              {data.icon} {data.label}
+            </button>
+          ))}
+        </div>
+
+        {/* LIST VIEW (CARD SIMPEL) */}
+        <div className="space-y-3">
           {isLoading && skip === 0 ? (
-            <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 font-medium animate-pulse flex flex-col items-center gap-3">
-              <RefreshCw size={28} className="animate-spin text-blue-400" />
-              Memuat database arsip...
+            <div className="bg-white p-12 rounded-xl border border-slate-200 text-center text-slate-500 flex flex-col items-center gap-3 shadow-sm">
+              <RefreshCw className="animate-spin text-blue-500" size={24}/>
+              <p className="text-sm font-medium">Memuat data arsip...</p>
             </div>
           ) : filteredData.length === 0 ? (
-            <div className="bg-white p-16 rounded-2xl border border-slate-200 text-center text-slate-400 font-medium flex flex-col items-center gap-4">
-              <div className="bg-slate-50 p-5 rounded-full border border-slate-100"><Search size={32} className="text-slate-300"/></div>
-              <p>Tidak ada data arsip yang cocok dengan pencarian atau filter.</p>
+            <div className="bg-white p-12 rounded-xl border border-slate-200 text-center text-slate-400 flex flex-col items-center gap-3 shadow-sm">
+              <Search className="text-slate-300" size={32}/>
+              <p className="text-sm font-medium">Tidak ada data arsip yang ditemukan.</p>
             </div>
           ) : (
             filteredData.map(item => {
               const catData = CATEGORY_MAP[item.category] || { label: item.category, icon: <Map size={14}/> };
               return (
-                <div key={item.id} className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6 group">
+                <div key={item.id} className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   
-                  {/* Info Peta (Kiri) */}
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="hidden sm:flex mt-1 w-12 h-12 bg-slate-50 text-slate-400 border border-slate-100 rounded-xl items-center justify-center shrink-0 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                      {catData.icon}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
-                          {catData.icon} {catData.label}
+                  {/* Info Peta */}
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 flex items-center gap-1 uppercase tracking-wider">
+                        {catData.label}
+                      </span>
+                      {item.analysis_text && (
+                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                          <Bot size={12}/> Teks AI
                         </span>
-                        {item.analysis_text && (
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <Bot size={12}/> Teks AI Tersedia
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-lg font-black text-slate-800 mb-2 leading-tight group-hover:text-blue-600 transition-colors">{item.title}</h3>
-                      <div className="flex items-center gap-4 text-xs font-medium text-slate-500 flex-wrap">
-                        <span className="flex items-center gap-1.5"><Calendar size={14} className="text-slate-400"/> {item.period}</span>
-                        <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-400"/> Update: {item.update_time}</span>
-                      </div>
+                      )}
+                    </div>
+                    
+                    <h3 className="text-base font-bold text-slate-800 mb-1">{item.title}</h3>
+                    
+                    <div className="flex items-center gap-3 text-[11px] font-medium text-slate-500">
+                      <span className="flex items-center gap-1"><Calendar size={12}/> {item.period}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><Clock size={12}/> Update: {item.update_time}</span>
                     </div>
                   </div>
 
-                  {/* Tombol Aksi (Kanan) */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 border-t lg:border-t-0 pt-4 lg:pt-0 border-slate-100">
+                  {/* Tombol Aksi */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 pt-3 lg:pt-0 border-t border-slate-100 lg:border-t-0">
                     
-                    {/* Grup Tombol Download */}
-                    <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                      <button onClick={() => handleDownloadFile('png', item.filename_base)} className="text-[10px] font-bold text-slate-600 bg-white hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 border border-slate-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm">
-                        <Download size={14}/> PNG
+                    {/* File Downloads */}
+                    <div className="flex items-center gap-1.5 pr-0 sm:pr-3 sm:border-r border-slate-200 w-full sm:w-auto">
+                      <button onClick={() => handleDownloadFile('png', item.filename_base)} className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                        PNG
                       </button>
-                      <button onClick={() => handleDownloadFile('geojson', item.filename_base)} className="text-[10px] font-bold text-slate-600 bg-white hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 border border-slate-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm">
-                        <FileJson size={14}/> JSON
+                      <button onClick={() => handleDownloadFile('geojson', item.filename_base)} className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                        JSON
                       </button>
-                      <button onClick={() => handleDownloadFile('csv', item.filename_base)} className="text-[10px] font-bold text-slate-600 bg-white hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 border border-slate-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm">
-                        <FileSpreadsheet size={14}/> CSV
+                      <button onClick={() => handleDownloadFile('csv', item.filename_base)} className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                        CSV
                       </button>
                       {item.category !== "hari_tanpa_hujan" && (
-                        <button onClick={() => handleDownloadFile('tif', item.filename_base)} className="text-[10px] font-bold text-slate-600 bg-white hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 border border-slate-200 px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm">
-                          <Download size={14}/> TIF
+                        <button onClick={() => handleDownloadFile('tif', item.filename_base)} className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                          TIF
                         </button>
                       )}
                     </div>
 
-                    <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
-
-                    {/* Grup Tombol Lihat & Hapus */}
+                    {/* Detail & Hapus */}
                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                       <button 
                         onClick={() => {
@@ -294,15 +299,15 @@ export default function DashboardArsip() {
                           setIsEditing(false); 
                           setEditAnalysisText(item.analysis_text || "");
                         }} 
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
                       >
-                        <Eye size={16}/> <span className="sm:hidden">Lihat Detail</span>
+                        <Eye size={14}/> Detail
                       </button>
                       <button 
                         onClick={() => setDeleteTarget({ id: item.id, title: item.title })} 
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-white border border-red-100 text-red-600 hover:bg-red-50 transition-colors"
                       >
-                        <Trash2 size={16}/> <span className="sm:hidden">Hapus</span>
+                        <Trash2 size={14}/> Hapus
                       </button>
                     </div>
                   </div>
@@ -313,16 +318,16 @@ export default function DashboardArsip() {
           )}
         </div>
         
-        {/* TOMBOL LOAD MORE (PAGINATION) */}
+        {/* TOMBOL LOAD MORE */}
         {hasMore && (
-          <div className="flex justify-center pt-4">
+          <div className="flex justify-center pt-2">
             <button 
               onClick={() => fetchArchives(false)} 
               disabled={isLoading}
-              className="text-sm font-bold bg-white text-slate-600 border border-slate-200 px-8 py-3 rounded-xl shadow-sm hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all flex items-center gap-2 disabled:opacity-50"
+              className="text-sm font-semibold bg-white text-slate-600 border border-slate-200 px-6 py-2 rounded-lg shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              {isLoading ? <RefreshCw size={16} className="animate-spin" /> : <ChevronDown size={16} />}
-              {isLoading ? 'Memuat Data...' : 'Tampilkan Lebih Banyak'}
+              {isLoading ? <RefreshCw className="animate-spin" size={14}/> : <ChevronDown size={14}/>}
+              {isLoading ? 'Memuat...' : 'Tampilkan Lebih Banyak'}
             </button>
           </div>
         )}
@@ -331,68 +336,68 @@ export default function DashboardArsip() {
       {/* ================= MODAL PREVIEW & EDIT ================= */}
       {previewData && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 transition-all">
-          <div className="bg-white p-6 rounded-3xl w-full max-w-7xl max-h-[95vh] flex flex-col md:flex-row gap-6 overflow-hidden animate-fade-in-up shadow-2xl border border-slate-200">
+          <div className="bg-white p-5 rounded-2xl w-full max-w-6xl max-h-[95vh] flex flex-col md:flex-row gap-5 overflow-hidden shadow-2xl">
             
             <div className="flex-1 flex flex-col overflow-hidden relative">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-black text-slate-800 text-xl truncate pr-4">{previewData.title}</h3>
-                <button onClick={() => setPreviewData(null)} className="text-slate-400 hover:text-slate-700 p-1.5 bg-slate-100 rounded-full md:hidden transition-colors"><X size={20}/></button>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold text-slate-800 text-lg truncate pr-4">{previewData.title}</h3>
+                <button onClick={() => setPreviewData(null)} className="text-slate-400 hover:text-slate-700 bg-slate-100 p-1 rounded-full md:hidden"><X size={18}/></button>
               </div>
-              <div className="flex-1 bg-slate-100/50 rounded-2xl overflow-auto flex items-center justify-center p-4 border border-slate-200">
-                <img src={previewData.url} alt="Preview Arsip" className="max-h-[75vh] object-contain shadow-sm border border-slate-200 rounded bg-white" />
+              <div className="flex-1 bg-slate-100/50 rounded-lg overflow-auto flex items-center justify-center p-3 border border-slate-200">
+                <img src={previewData.url} alt="Preview Arsip" className="max-h-[75vh] object-contain border border-slate-200 bg-white rounded shadow-sm" />
               </div>
             </div>
 
-            <div className="w-full md:w-[380px] lg:w-[450px] flex flex-col max-h-[40vh] md:max-h-none border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6 relative">
+            <div className="w-full md:w-[320px] lg:w-[380px] flex flex-col max-h-[40vh] md:max-h-none border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-5 relative">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  <Bot size={16} className="text-blue-600"/> Draf Analisis Cuaca
+                <h3 className="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                  <Bot className="text-blue-500" size={16}/> Analisis Cuaca
                 </h3>
                 
                 <div className="flex items-center gap-2">
                   {!isEditing ? (
                     <button 
                       onClick={() => setIsEditing(true)} 
-                      className="text-xs flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 hover:text-blue-600 font-bold transition-colors shadow-sm"
+                      className="text-xs flex items-center gap-1 bg-white border border-slate-300 text-slate-600 px-2 py-1 rounded hover:bg-slate-50 font-medium transition-colors"
                     >
-                      <Edit3 size={14}/> Edit Text
+                      <Edit3 size={12}/> Edit
                     </button>
                   ) : (
                     <div className="flex gap-2">
                       <button 
                         onClick={() => { setIsEditing(false); setEditAnalysisText(previewData.analysis); }} 
-                        className="text-xs font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                        className="text-xs font-medium text-slate-500 border border-slate-300 hover:bg-slate-50 px-2 py-1 rounded transition-colors"
                       >
                         Batal
                       </button>
                       <button 
                         onClick={handleSaveEdit} 
                         disabled={isSavingEdit} 
-                        className="text-xs font-bold flex items-center gap-1.5 bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 shadow-md transition-all disabled:opacity-50"
+                        className="text-xs font-medium bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
                       >
                         {isSavingEdit ? 'Menyimpan...' : 'Simpan'}
                       </button>
                     </div>
                   )}
-                  <button onClick={() => setPreviewData(null)} className="hidden md:flex text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 rounded-full ml-1 transition-colors"><X size={20}/></button>
+                  <button onClick={() => setPreviewData(null)} className="hidden md:flex text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1 rounded-full"><X size={18}/></button>
                 </div>
               </div>
               
-              <div className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-5 text-sm text-slate-700 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner custom-scrollbar relative">
+              <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700 overflow-y-auto whitespace-pre-wrap leading-relaxed custom-scrollbar">
                 {isEditing ? (
                   <textarea 
-                    className="w-full h-full min-h-[250px] bg-white border border-slate-300 rounded-xl p-4 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none shadow-sm transition-colors text-slate-700 leading-relaxed"
+                    className="w-full h-full min-h-[200px] bg-white border border-slate-300 rounded p-3 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none font-medium"
                     value={editAnalysisText}
                     onChange={(e) => setEditAnalysisText(e.target.value)}
                     placeholder="Ketik narasi analisis di sini..."
                   />
                 ) : (
                   previewData.analysis ? (
-                    <div className="text-justify font-medium">{previewData.analysis}</div>
+                    <div className="text-justify font-normal">{previewData.analysis}</div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 space-y-3">
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm"><FileJson size={24} className="text-slate-300"/></div>
-                      <p className="text-xs font-semibold">Tidak ada catatan analisis AI untuk arsip ini.</p>
+                    <div className="text-center text-slate-400 mt-10 flex flex-col items-center">
+                      <FileJson className="text-slate-300 mb-2" size={24}/>
+                      <p className="text-xs font-medium">Tidak ada catatan analisis AI.</p>
                     </div>
                   )
                 )}
@@ -402,10 +407,10 @@ export default function DashboardArsip() {
                 <button 
                   onClick={handleCopyText} 
                   disabled={!previewData.analysis} 
-                  className="mt-4 w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 text-slate-700 font-bold text-sm rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+                  className="mt-3 w-full py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-sm rounded transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isCopied ? <Check size={16} className="text-blue-600"/> : <Copy size={16} className="text-slate-400"/>}
-                  {isCopied ? 'Teks Tersalin!' : 'Copy Teks Analisis'}
+                  {isCopied ? <Check className="text-green-600" size={16}/> : <Copy className="text-slate-400" size={16}/>}
+                  {isCopied ? 'Tersalin!' : 'Copy Analisis'}
                 </button>
               )}
             </div>
@@ -414,22 +419,20 @@ export default function DashboardArsip() {
         </div>
       )}
 
-      {/* ================= MODAL HAPUS PERMANEN ================= */}
+      {/* ================= MODAL HAPUS ================= */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col w-full max-w-sm border border-slate-200 animate-fade-in-up text-center">
-            <div className="w-16 h-16 bg-white text-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-slate-200 shadow-sm">
-              <AlertTriangle size={28} strokeWidth={2.5} />
-            </div>
-            <h3 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Hapus Arsip?</h3>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
-              Data <strong className="text-slate-800">{deleteTarget.title}</strong> akan dihapus permanen dari sistem.
+          <div className="bg-white p-6 rounded-xl shadow-xl flex flex-col w-full max-w-sm border border-slate-200 text-center">
+            <AlertTriangle className="text-red-500 mx-auto mb-3" size={32}/>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Hapus Arsip?</h3>
+            <p className="text-sm font-medium text-slate-500 mb-6">
+              Data <strong className="text-slate-800">{deleteTarget.title}</strong> akan dihapus permanen.
             </p>
             <div className="flex gap-3 w-full">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2 rounded font-semibold bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 transition-colors">
                 Batal
               </button>
-              <button onClick={executeDelete} className="flex-1 py-3 rounded-xl font-bold bg-slate-900 text-white hover:bg-red-600 shadow-md transition-all active:scale-95">
+              <button onClick={executeDelete} className="flex-1 py-2 rounded font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">
                 Hapus
               </button>
             </div>
@@ -439,8 +442,8 @@ export default function DashboardArsip() {
 
       {/* TOAST NOTIFICATION */}
       {toast && (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[10000] px-5 py-3 rounded-2xl shadow-xl font-bold text-sm animate-fade-in-up flex items-center gap-3 border backdrop-blur-md ${toast.type === 'error' ? 'bg-red-50/90 text-red-700 border-red-200' : 'bg-slate-900 text-white border-slate-800'}`}>
-          {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} className="text-blue-400" />}
+        <div className={`fixed bottom-6 right-6 z-[10000] px-4 py-3 rounded-lg shadow-lg font-medium text-sm flex items-center gap-3 border ${toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-800 text-white border-slate-700'}`}>
+          {toast.type === 'error' ? <AlertCircle size={16}/> : <CheckCircle2 className="text-green-400" size={16}/>}
           {toast.message}
         </div>
       )}
