@@ -60,7 +60,7 @@ def get_hth_label(val, levels, labels):
 
 
 def get_or_calculate_idw(content, sigma, power, col_lon="LON", col_lat="LAT", col_val="VAL"):
-    grid_x, grid_y = np.mgrid[113.0:120.0:800j, -3.0:3.2:800j]
+    grid_x, grid_y = np.mgrid[113.0:120.0:200j, -3.0:3.2:200j]
     try: 
         df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
     except: 
@@ -81,15 +81,35 @@ def get_or_calculate_idw(content, sigma, power, col_lon="LON", col_lat="LAT", co
     df = df[(df['LON'] >= 113.0) & (df['LON'] <= 120.0) & (df['LAT'] >= -3.0) & (df['LAT'] <= 3.2)]
     x, y, z = df['LON'].values, df['LAT'].values, df['VAL'].values
     
-    dist = cdist(np.c_[grid_x.ravel(), grid_y.ravel()], np.c_[x, y])
-    dist[dist == 0] = 1e-10
-    weights = 1.0 / (dist ** power)
-    grid_z = (np.sum(weights * z, axis=1) / np.sum(weights, axis=1)).reshape(grid_x.shape)
+    # ==============================================================
+    # PERBAIKAN MEMORY LEAK (CHUNKING IDW)
+    # ==============================================================
+    grid_points = np.c_[grid_x.ravel(), grid_y.ravel()]
+    obs_points = np.c_[x, y]
+    z_grid_flat = np.zeros(grid_points.shape[0])
+    
+    chunk_size = 50000  # Hitung per 50.000 titik biar RAM nggak jebol
+    
+    for i in range(0, grid_points.shape[0], chunk_size):
+        chunk = grid_points[i:i + chunk_size]
+        
+        # Hitung jarak HANYA untuk chunk ini
+        dist = cdist(chunk, obs_points)
+        dist[dist == 0] = 1e-10  # Hindari pembagian dengan nol
+        
+        # Rumus bobot IDW
+        weights = 1.0 / (dist ** power)
+        z_grid_flat[i:i + chunk_size] = np.sum(weights * z, axis=1) / np.sum(weights, axis=1)
+        
+    # Kembalikan array 1D ke bentuk grid 2D (800x800)
+    grid_z = z_grid_flat.reshape(grid_x.shape)
+    # ==============================================================
+    
     grid_z = gaussian_filter(grid_z, sigma=sigma)
     
     if kaltim_area is not None:
-        grid_points = gpd.GeoSeries.from_xy(grid_x.ravel(), grid_y.ravel())
-        grid_z[~grid_points.within(kaltim_area).values.reshape(grid_x.shape)] = np.nan
+        grid_points_geo = gpd.GeoSeries.from_xy(grid_x.ravel(), grid_y.ravel())
+        grid_z[~grid_points_geo.within(kaltim_area).values.reshape(grid_x.shape)] = np.nan
         
     return grid_x, grid_y, grid_z, df
 
