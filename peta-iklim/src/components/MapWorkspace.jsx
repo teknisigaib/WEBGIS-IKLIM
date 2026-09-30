@@ -11,7 +11,6 @@ export default function MapWorkspace({ mapData, isLoading }) {
   const [polygonOpacity, setPolygonOpacity] = useState(0.85);
   const [batasKab, setBatasKab] = useState(null);
 
-  // OPTIMASI: Mencegah Memory Leak jika komponen di-unmount sebelum fetch selesai
   useEffect(() => {
     let isMounted = true; 
     
@@ -23,21 +22,21 @@ export default function MapWorkspace({ mapData, isLoading }) {
       .catch(err => console.error("Gagal memuat batas kabupaten:", err));
       
     return () => {
-      isMounted = false; // Cleanup function
+      isMounted = false; 
     };
   }, []);
 
   const batasKabStyle = { fillColor: 'transparent', color: '#1e293b', weight: 1.5, opacity: 0.6, dashArray: '6, 6', fillOpacity: 0 };
 
   const geoJsonStyle = (feature) => {
-  const colorHex = feature.properties.fill || "#cccccc";
-  return { 
-    fillColor: colorHex, 
-    fillOpacity: polygonOpacity, 
-    color: 'transparent', // <--- Bikin pinggiran benar-benar gaib
-    weight: 0 
+    const colorHex = feature.properties.fill || "#cccccc";
+    return { 
+      fillColor: colorHex, 
+      fillOpacity: polygonOpacity, 
+      color: 'transparent', 
+      weight: 0 
+    };
   };
-};
 
   const pointToLayer = (feature, latlng) => {
     const colorHex = feature.properties.fill || "#cccccc";
@@ -56,15 +55,15 @@ export default function MapWorkspace({ mapData, isLoading }) {
       const rangeText = feature.properties.range_text;
       const categoryLabel = feature.properties.category;
       const unit = mapData?.legend_config?.unit || 'mm'; 
-      const catHtml = categoryLabel ? `<br/><span class="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1 inline-block">${categoryLabel.toUpperCase()}</span>` : "";
+      const catHtml = categoryLabel ? `<br/><span class="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md mt-1 inline-block">${categoryLabel.toUpperCase()}</span>` : "";
 
       layer.bindTooltip(
         `<div style="font-family: 'Poppins', sans-serif;" class="text-center">
-          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${mapTitle}</span><br/>
-          <strong class="text-base font-black text-slate-800">${rangeText} <span class="text-sm font-bold text-slate-500">${unit}</span></strong>
+          <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">${mapTitle}</span><br/>
+          <strong class="text-lg font-bold text-slate-800">${rangeText} <span class="text-xs font-semibold text-slate-500">${unit}</span></strong>
           ${catHtml}
         </div>`,
-        { sticky: true, className: 'bg-white/95 backdrop-blur-md border-0 shadow-xl rounded-xl p-3' }
+        { sticky: true, className: 'bg-white/90 backdrop-blur-xl border border-white/60 shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-xl p-3' }
       );
 
       layer.on({
@@ -78,8 +77,8 @@ export default function MapWorkspace({ mapData, isLoading }) {
         mouseout: (e) => { 
           const l = e.target; 
           if(feature.geometry.type !== "Point") {
-            l.setStyle({ weight: 0, color: 'transparent' }); // <--- Sesuaikan dengan gaya awal
-         }
+            l.setStyle({ weight: 0, color: 'transparent' }); 
+          }
         }
       });
     }
@@ -91,15 +90,16 @@ export default function MapWorkspace({ mapData, isLoading }) {
   return (
     <div style={{ fontFamily: "'Poppins', sans-serif" }} className="h-full w-full relative z-0 bg-slate-50 overflow-hidden">
       
+      {/* LOADING OVERLAY MODERN */}
       {isLoading && (
-        <div className="absolute inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900/20 backdrop-blur-sm transition-all duration-300">
-          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center border border-white/50 animate-fade-in-up">
+        <div className="absolute inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900/30 backdrop-blur-md transition-all duration-300">
+          <div className="bg-white/80 backdrop-blur-xl p-10 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] flex flex-col items-center border border-white/60 animate-fade-in-up">
             <div className="relative mb-6">
-              <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
-              <Loader2 className="w-14 h-14 text-blue-600 animate-spin relative z-10" />
+              <div className="absolute inset-0 bg-blue-500 rounded-full blur-[20px] opacity-30 animate-pulse"></div>
+              <Loader2 className="w-12 h-12 text-blue-600 animate-spin relative z-10" />
             </div>
-            <h3 className="text-xl font-black text-slate-800 tracking-tight">Merender Spasial</h3>
-            <p className="text-xs text-slate-500 mt-2 font-medium text-center">Memproses data spasial...<br/>Mohon tunggu sebentar.</p>
+            <h3 className="text-xl font-bold text-slate-800 tracking-tight">Merender Spasial</h3>
+            <p className="text-sm text-slate-500 mt-2 font-medium text-center leading-relaxed">Memproses algoritma IDW & AI...<br/>Mohon tunggu sebentar.</p>
           </div>
         </div>
       )}
@@ -135,16 +135,16 @@ export default function MapWorkspace({ mapData, isLoading }) {
                     key={idx} center={[pt.LAT, pt.LON]} radius={5} pane="markerPane"
                     pathOptions={{ color: '#ffffff', weight: 1.5, fillOpacity: 0.9, fillColor: '#0f172a' }}
                   >
-                    <Tooltip direction="top" offset={[0, -10]} opacity={1} className="bg-white/95 backdrop-blur-md border-0 shadow-xl rounded-xl p-0 overflow-hidden">
-                      <div className="text-center min-w-[100px]">
-                        <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-200">
+                    <Tooltip direction="top" offset={[0, -10]} opacity={1} className="bg-white/90 backdrop-blur-xl border border-white/60 shadow-xl rounded-xl p-0 overflow-hidden">
+                      <div className="text-center min-w-[110px]">
+                        <div className="bg-slate-100/80 px-3 py-2 border-b border-slate-200/60">
                           <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Data Observasi</span>
                         </div>
                         <div className="p-3">
-                          <strong className="text-base font-black text-slate-800">
-                            {pt.VAL} <span className="text-xs font-bold text-slate-500">{mapData?.legend_config?.unit || 'mm'}</span>
+                          <strong className="text-base font-bold text-slate-800">
+                            {pt.VAL} <span className="text-xs font-semibold text-slate-500">{mapData?.legend_config?.unit || 'mm'}</span>
                           </strong>
-                          <div className="text-[9px] text-slate-400 font-medium mt-1 bg-slate-50 rounded px-1 py-0.5 border border-slate-100 inline-block">
+                          <div className="text-[10px] text-slate-500 font-medium mt-1.5 bg-slate-50 rounded-md px-2 py-1 border border-slate-100 inline-block">
                             {pt.LAT.toFixed(3)}, {pt.LON.toFixed(3)}
                           </div>
                         </div>
@@ -158,16 +158,17 @@ export default function MapWorkspace({ mapData, isLoading }) {
         </LayersControl>
       </MapContainer>
 
+      {/* LEGENDA MODERN GLASSMORPHISM */}
       {mapData && mapData.legend_config && (
-        <div className="absolute bottom-8 left-8 z-[1000] bg-white/85 backdrop-blur-xl p-5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/60 min-w-[260px] animate-fade-in-up">
+        <div className="absolute bottom-8 left-8 z-[1000] bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-white/60 min-w-[260px] animate-fade-in-up">
           <div className="border-b border-slate-200/60 pb-3 mb-3">
-            <h4 className="font-black text-slate-900 text-sm tracking-tight leading-tight mb-1">{mapData.geojson?.metadata?.map_type || mapData.legend_config.title.toUpperCase()}</h4>
+            <h4 className="font-bold text-slate-900 text-sm tracking-tight leading-tight mb-1">{mapData.geojson?.metadata?.map_type || mapData.legend_config.title.toUpperCase()}</h4>
             <div className="flex items-center gap-2">
-              <p className="text-[11px] font-bold text-slate-500">{mapData.geojson?.metadata?.period || '-'}</p>
-              <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">Updated: {mapData.geojson?.metadata?.update_time || '-'}</span>
+              <p className="text-[11px] font-semibold text-slate-500">{mapData.geojson?.metadata?.period || '-'}</p>
+              <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">Updated: {mapData.geojson?.metadata?.update_time || '-'}</span>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
             {mapData.legend_config.colors.map((color, index) => {
               const levels = mapData.legend_config.levels;
               const labels = mapData.legend_config.labels || [];
@@ -175,7 +176,6 @@ export default function MapWorkspace({ mapData, isLoading }) {
               
               let labelAngka = levels[index + 1] < 1000 ? `${levels[index]} - ${levels[index + 1]}` : `> ${levels[index]}`;
               
-              // --- PENGGUNAAN CUSTOM RANGES DARI JSON ---
               if (mapData.legend_config.custom_ranges && mapData.legend_config.custom_ranges[index]) {
                 labelAngka = mapData.legend_config.custom_ranges[index];
               }
@@ -184,11 +184,11 @@ export default function MapWorkspace({ mapData, isLoading }) {
               const labelKategori = labels[index] ? labels[index] : "";
               
               return (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-md shadow-sm border border-black/10 shrink-0 transition-transform hover:scale-110" style={{ backgroundColor: color }}></div>
+                <div key={index} className="flex items-center gap-3 group">
+                  <div className="w-5 h-5 rounded shadow-sm border border-black/10 shrink-0 transition-transform group-hover:scale-110" style={{ backgroundColor: color }}></div>
                   <div className="flex flex-col justify-center">
-                    <span className="text-[11px] font-bold text-slate-700 leading-none">{labelAngka} <span className="text-slate-400 font-semibold">{unit}</span></span>
-                    {labelKategori && <span className="text-[9px] font-semibold text-slate-400 leading-none mt-0.5">{labelKategori}</span>}
+                    <span className="text-xs font-semibold text-slate-700 leading-none">{labelAngka} <span className="text-[10px] text-slate-400 font-medium">{unit}</span></span>
+                    {labelKategori && <span className="text-[10px] font-medium text-slate-500 leading-none mt-1">{labelKategori}</span>}
                   </div>
                 </div>
               );
@@ -197,11 +197,12 @@ export default function MapWorkspace({ mapData, isLoading }) {
         </div>
       )}
 
+      {/* KONTROL TRANSPARANSI POLIGON */}
       {mapData && !isHTHMap && (
-        <div className="absolute bottom-8 right-8 z-[1000] bg-white/85 backdrop-blur-xl p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/60 w-56 animate-fade-in-up">
+        <div className="absolute bottom-8 right-8 z-[1000] bg-white/80 backdrop-blur-xl p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-white/60 w-64 animate-fade-in-up">
           <div className="flex items-center gap-2 mb-3 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
-            <div className="bg-white p-1 rounded shadow-sm"><Sliders size={14} className="text-blue-600" /></div>
-            <h4 className="font-bold text-slate-700 text-[11px] tracking-wide uppercase">Transparansi Poligon</h4>
+            <div className="bg-white p-1.5 rounded-lg shadow-sm"><Sliders size={14} className="text-blue-600" /></div>
+            <h4 className="font-bold text-slate-700 text-xs tracking-wide">Transparansi Poligon</h4>
           </div>
           <div className="px-1">
             <input 
@@ -209,10 +210,10 @@ export default function MapWorkspace({ mapData, isLoading }) {
               onChange={(e) => setPolygonOpacity(parseFloat(e.target.value))}
               className="w-full accent-blue-600 cursor-pointer"
             />
-            <div className="flex justify-between mt-1">
-              <span className="text-[9px] font-bold text-slate-400">Pudar</span>
-              <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 rounded">{Math.round(polygonOpacity * 100)}%</span>
-              <span className="text-[9px] font-bold text-slate-400">Solid</span>
+            <div className="flex justify-between mt-1.5 items-center">
+              <span className="text-[10px] font-semibold text-slate-400">Pudar</span>
+              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">{Math.round(polygonOpacity * 100)}%</span>
+              <span className="text-[10px] font-semibold text-slate-400">Solid</span>
             </div>
           </div>
         </div>

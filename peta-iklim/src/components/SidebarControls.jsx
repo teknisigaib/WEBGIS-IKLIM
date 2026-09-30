@@ -10,13 +10,12 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
   
   const [selectedCol, setSelectedCol] = useState({ lon: '', lat: '', val: '', name: '' });
 
-  const [category, setCategory] = useState("prakiraan_hujan_dasarian");
+  const [category, setCategory] = useState("prediksi_hujan_dasarian");
   const [creator, setCreator] = useState("TIM FORECASTER");
 
   const [selDay, setSelDay] = useState(new Date().getDate());
 
   const isHarianMode = category.includes('harian'); 
-  // 👇 INI YANG DIUBAH CUY! Sekarang HTH masuk kategori Dasarian
   const isDasarianMode = category.includes('dasarian') || category === 'hari_tanpa_hujan';
   const isHTHMode = category === 'hari_tanpa_hujan';
 
@@ -72,8 +71,8 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
 
   const onGenerateClick = () => {
     if (!file) return alert("Pilih file CSV terlebih dahulu!");
-    if (!selectedCol.lon || !selectedCol.lat || !selectedCol.val) return alert("PENTING: Harap petakan (klik) tombol untuk Bujur (X), Lintang (Y), dan Nilai Curah Hujan (Z) terlebih dahulu!");
-    if (isHTHMode && !selectedCol.name) return alert("PENTING: Untuk peta Hari Tanpa Hujan, harap klik tombol untuk Kolom Nama Lokasi!");
+    if (!selectedCol.lon || !selectedCol.lat || !selectedCol.val) return alert("PENTING: Harap petakan (klik) tombol untuk Bujur (X), Lintang (Y), dan Nilai (Z) terlebih dahulu!");
+    if (isHTHMode && !selectedCol.name) return alert("PENTING: Untuk peta HTH, harap klik tombol untuk Kolom Nama Lokasi!");
     if (!updateDate) return alert("Tanggal Update wajib diisi!");
     onGenerate(buildFormData());
   };
@@ -84,63 +83,64 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
   };
 
   return (
-    <div style={{ fontFamily: "'Poppins', sans-serif" }} className="w-[400px] h-full bg-white flex flex-col shadow-[8px_0_30px_rgba(0,0,0,0.03)] z-10 relative">
+    <div style={{ fontFamily: "'Poppins', sans-serif" }} className="w-[420px] h-full bg-white/90 backdrop-blur-xl flex flex-col shadow-[10px_0_40px_rgba(0,0,0,0.06)] border-r border-white/50 z-10 relative">
       
       {/* HEADER SIDEBAR */}
-      <div className="p-6 bg-white border-b border-slate-100 flex flex-col z-20 shadow-sm">
+      <div className="p-6 bg-transparent border-b border-slate-200/60 flex flex-col z-20">
         <div className="flex items-center gap-3 mb-1">
-          <img src="/logo_bmkg.png" alt="BMKG" className="h-8 w-8 object-contain drop-shadow-sm" onError={(e) => e.target.style.display='none'} />
-          <div className="w-[2px] h-6 bg-slate-300 rounded-full"></div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">
+          <img src="/logo_bmkg.png" alt="BMKG" className="h-9 w-9 object-contain drop-shadow-md" onError={(e) => e.target.style.display='none'} />
+          <div className="w-[2px] h-6 bg-slate-200 rounded-full"></div>
+          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-slate-800 tracking-tight leading-none">
             WebGIS
           </h1>
         </div>
-        <p className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mt-1">Workspace Editor</p>
+        <p className="text-slate-400 text-[10px] font-semibold tracking-widest uppercase mt-2">Workspace Editor</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-7 styled-scrollbar bg-slate-50/50">
+      <div className="flex-1 overflow-y-auto p-6 space-y-8 styled-scrollbar">
         
         {/* 1. SUMBER DATA */}
         <section>
-          <div className="flex items-center gap-2 text-slate-800 font-bold mb-3">
-            <Database size={18} className="text-blue-600" /> <h3 className="text-sm">Sumber Data</h3>
+          <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
+            <div className="p-1.5 bg-blue-50 rounded-lg"><Database size={16} className="text-blue-600" /></div>
+            <h3 className="text-sm">Sumber Data CSV</h3>
           </div>
           
           <div className="relative group">
             <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload" />
-            <label htmlFor="file-upload" className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${file ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-200 bg-white hover:bg-blue-50/50 hover:border-blue-400 hover:shadow-md'}`}>
-              <UploadCloud size={28} className={`mb-2 transition-colors ${file ? 'text-emerald-500' : 'text-slate-300 group-hover:text-blue-500'}`} />
-              <span className={`text-[11px] font-bold text-center px-4 truncate w-full ${file ? 'text-emerald-700' : 'text-slate-500'}`}>
-                {file ? file.name : "Klik / Drag file CSV kesini"}
+            <label htmlFor="file-upload" className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${file ? 'border-emerald-400 bg-emerald-50/50 shadow-inner' : 'border-slate-300 bg-slate-50/50 hover:bg-blue-50/50 hover:border-blue-400 hover:shadow-md'}`}>
+              <UploadCloud size={32} className={`mb-3 transition-colors ${file ? 'text-emerald-500' : 'text-slate-400 group-hover:text-blue-500'}`} />
+              <span className={`text-xs font-semibold text-center px-4 truncate w-full ${file ? 'text-emerald-700' : 'text-slate-500 group-hover:text-blue-600'}`}>
+                {file ? file.name : "Klik / Drag file kesini"}
               </span>
             </label>
           </div>
 
-          {/* DYNAMIC COLUMN MAPPING - WRAP MODE */}
+          {/* DYNAMIC COLUMN MAPPING */}
           {csvHeaders.length > 0 && (
-            <div className="mt-3 p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl animate-fade-in-up">
-              <h4 className="text-[11px] font-bold text-indigo-900 mb-1 flex items-center gap-1">
-                <Settings size={14}/> Pemetaan Kolom Cepat
+            <div className="mt-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl animate-fade-in-up shadow-sm">
+              <h4 className="text-xs font-bold text-indigo-900 mb-1.5 flex items-center gap-1.5">
+                <Settings size={14}/> Pemetaan Kolom
               </h4>
-              <p className="text-[9px] text-indigo-600/80 font-medium leading-relaxed mb-3">
+              <p className="text-[10px] text-indigo-600/80 font-medium leading-relaxed mb-4">
                 Klik nama kolom dari file CSV Anda yang sesuai:
               </p>
 
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 {['lon', 'lat', 'val'].map((type, idx) => (
-                  <div key={idx} className="flex flex-col gap-1.5 bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm">
-                    <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider pl-1">
+                  <div key={idx} className="flex flex-col gap-2 bg-white p-3 rounded-xl border border-indigo-100 shadow-sm">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-1">
                       Kolom {type === 'lon' ? 'Bujur (X)' : type === 'lat' ? 'Lintang (Y)' : 'Nilai (Z)'} <span className="text-red-500">*</span>
                     </div>
-                    <div className="w-full flex flex-wrap gap-1.5">
+                    <div className="w-full flex flex-wrap gap-2">
                       {csvHeaders.map((h, i) => (
                         <button
                           key={`${type}-${i}`}
                           onClick={() => setSelectedCol({...selectedCol, [type]: h})}
-                          className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg transition-all border ${
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all border ${
                             selectedCol[type] === h 
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-[1.02]' 
-                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300'
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-[1.03]' 
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700'
                           }`}
                         >
                           {h}
@@ -150,20 +150,20 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
                   </div>
                 ))}
                 
-                {/* Tambahan Kolom Nama (KHUSUS HTH) */}
+                {/* Kolom Nama Khusus HTH */}
                 {isHTHMode && (
-                  <div className="flex flex-col gap-1.5 bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/50 shadow-sm mt-1">
-                    <div className="text-[9px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1 pl-1">
-                      <MapPin size={10}/> Kolom Nama Lokasi <span className="text-red-500">*</span>
+                  <div className="flex flex-col gap-2 bg-amber-50/70 p-3 rounded-xl border border-amber-200 shadow-sm mt-1">
+                    <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1 pl-1">
+                      <MapPin size={12}/> Kolom Nama Lokasi <span className="text-red-500">*</span>
                     </div>
-                    <div className="w-full flex flex-wrap gap-1.5">
+                    <div className="w-full flex flex-wrap gap-2">
                       {csvHeaders.map((h, i) => (
                         <button
                           key={`name-${i}`}
                           onClick={() => setSelectedCol({...selectedCol, name: h})}
-                          className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg transition-all border ${
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all border ${
                             selectedCol.name === h 
-                              ? 'bg-amber-600 text-white border-amber-600 shadow-md scale-[1.02]' 
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-md scale-[1.03]' 
                               : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-100'
                           }`}
                         >
@@ -173,7 +173,6 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
                     </div>
                   </div>
                 )}
-                
               </div>
             </div>
           )}
@@ -181,21 +180,22 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
 
         {/* 2. INFORMASI PETA */}
         <section>
-          <div className="flex items-center gap-2 text-slate-800 font-bold mb-3">
-            <FileText size={18} className="text-blue-600" /> <h3 className="text-sm">Metadata Peta</h3>
+          <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
+            <div className="p-1.5 bg-blue-50 rounded-lg"><FileText size={16} className="text-blue-600" /></div>
+            <h3 className="text-sm">Metadata Peta</h3>
           </div>
           
-          <div className="space-y-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div className="space-y-5 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
             {/* KATEGORI PETA */}
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Kategori Peta</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 transition-all font-semibold text-slate-700 cursor-pointer">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Kategori Peta</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all font-semibold text-slate-700 cursor-pointer appearance-none">
                 <option value="hari_tanpa_hujan">Peta Hari Tanpa Hujan (HTH)</option>
                 <option value="sebaran_hujan_harian">Sebaran Hujan Harian</option>
-                <option value="prakiraan_hujan_dasarian">Prakiraan Curah Hujan Dasarian</option>
-                <option value="prakiraan_hujan_bulanan">Prakiraan Curah Hujan Bulanan</option>
-                <option value="prakiraan_sifat_dasarian">Prakiraan Sifat Hujan Dasarian</option>
-                <option value="prakiraan_sifat_bulanan">Prakiraan Sifat Hujan Bulanan</option>
+                <option value="prediksi_hujan_dasarian">Prediksi Curah Hujan Dasarian</option>
+                <option value="prediksi_hujan_bulanan">Prediksi Curah Hujan Bulanan</option>
+                <option value="prediksi_sifat_dasarian">Prediksi Sifat Hujan Dasarian</option>
+                <option value="prediksi_sifat_bulanan">Prediksi Sifat Hujan Bulanan</option>
                 <option value="analisis_hujan_dasarian">Analisis Curah Hujan Dasarian</option>
                 <option value="analisis_hujan_bulanan">Analisis Curah Hujan Bulanan</option>
                 <option value="analisis_sifat_bulanan">Analisis Sifat Hujan Bulanan</option>
@@ -205,68 +205,63 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
 
             {/* PERIODE PETA */}
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><Calendar size={12}/> Periode Peta</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Calendar size={12}/> Periode Peta</label>
               <div className="flex gap-2">
-                
-                {/* Dropdown Hari */}
                 {isHarianMode && (
-                  <select value={selDay} onChange={e => setSelDay(e.target.value)} className="w-1/3 text-xs p-2.5 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-400 font-semibold text-slate-700 cursor-pointer">
+                  <select value={selDay} onChange={e => setSelDay(e.target.value)} className="w-1/3 text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 font-semibold text-slate-700 cursor-pointer appearance-none text-center">
                     {Array.from({length: 31}, (_, i) => i + 1).map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 )}
 
-                {/* Dropdown Dasarian */}
                 {isDasarianMode && (
-                  <select value={selDasarian} onChange={e => setSelDasarian(e.target.value)} className="w-1/3 text-xs p-2.5 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-400 font-semibold text-slate-700 cursor-pointer">
+                  <select value={selDasarian} onChange={e => setSelDasarian(e.target.value)} className="w-1/3 text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 font-semibold text-slate-700 cursor-pointer appearance-none text-center">
                     <option value="I">Das I</option>
                     <option value="II">Das II</option>
                     <option value="III">Das III</option>
                   </select>
                 )}
 
-                {/* Dropdown Bulan */}
-                <select value={selMonth} onChange={e => setSelMonth(e.target.value)} className={`${(isDasarianMode || isHarianMode) ? 'w-1/3' : 'w-2/3'} text-xs p-2.5 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-400 font-semibold text-slate-700 cursor-pointer`}>
+                <select value={selMonth} onChange={e => setSelMonth(e.target.value)} className={`${(isDasarianMode || isHarianMode) ? 'w-1/3' : 'w-2/3'} text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 font-semibold text-slate-700 cursor-pointer appearance-none`}>
                   {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
 
-                {/* Dropdown Tahun */}
-                <select value={selYear} onChange={e => setSelYear(e.target.value)} className="w-1/3 text-xs p-2.5 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-400 font-semibold text-slate-700 cursor-pointer">
+                <select value={selYear} onChange={e => setSelYear(e.target.value)} className="w-1/3 text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 font-semibold text-slate-700 cursor-pointer appearance-none text-center">
                   {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
-
               </div>
             </div>
 
             {/* UPDATE & CREATOR */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><Clock size={12}/> Tgl Update</label>
-                <input type="date" value={updateDate} onChange={(e) => setUpdateDate(e.target.value)} className="w-full px-2.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 transition-all font-semibold text-slate-700 cursor-pointer" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Clock size={12}/> Tgl Update</label>
+                <input type="date" value={updateDate} onChange={(e) => setUpdateDate(e.target.value)} className="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all font-semibold text-slate-700 cursor-pointer" />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><User size={12}/> Pembuat</label>
-                <input type="text" value={creator} onChange={(e) => setCreator(e.target.value)} className="w-full px-2.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 transition-all font-semibold text-slate-700" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><User size={12}/> Pembuat</label>
+                <input type="text" value={creator} onChange={(e) => setCreator(e.target.value)} className="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all font-semibold text-slate-700" />
               </div>
             </div>
           </div>
         </section>
 
-        {/* 3. ALGORITMA IDW - Disembunyikan saat mode HTH */}
+        {/* 3. ALGORITMA IDW */}
         {!isHTHMode && (
           <section>
-            <div className="flex items-center gap-2 text-slate-800 font-bold mb-3">
-              <Sliders size={18} className="text-blue-600" /> <h3 className="text-sm">Parameter IDW</h3>
+            <div className="flex items-center gap-2 text-slate-800 font-bold mb-4">
+              <div className="p-1.5 bg-blue-50 rounded-lg"><Sliders size={16} className="text-blue-600" /></div>
+              <h3 className="text-sm">Parameter Spasial</h3>
             </div>
             
-            <div className="space-y-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="space-y-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
               <div>
-                <div className="flex justify-between items-center mb-1.5"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Power (P)</label><span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{power}</span></div>
+                <div className="flex justify-between items-center mb-2"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">IDW Power (P)</label><span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg">{power}</span></div>
                 <input type="range" min="0.1" max="10.0" step="0.1" value={power} onChange={(e) => setPower(parseFloat(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
               </div>
               <div>
-                <div className="flex justify-between items-center mb-1.5"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Smoothing (Sigma)</label><span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{sigma}</span></div>
+                <div className="flex justify-between items-center mb-2"><label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gaussian Smoothing</label><span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg">{sigma}</span></div>
                 <input type="range" min="0" max="5.0" step="0.1" value={sigma} onChange={(e) => setSigma(parseFloat(e.target.value))} className="w-full accent-blue-600 cursor-pointer" />
               </div>
             </div>
@@ -276,12 +271,12 @@ export default function SidebarControls({ onGenerate, onExport, isLoading, hasPr
       </div>
 
       {/* 4. ACTION BUTTONS */}
-      <div className="p-5 bg-white/90 backdrop-blur-md border-t border-slate-100 space-y-2.5 z-20">
-        <button onClick={onGenerateClick} disabled={isLoading} className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-70 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-          <Zap size={16} className={isLoading ? 'animate-pulse' : ''} /> {isLoading ? "Memproses AI & Spasial..." : "Render Peta Spasial"}
+      <div className="p-6 bg-white/80 backdrop-blur-xl border-t border-slate-200 space-y-3 z-20 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+        <button onClick={onGenerateClick} disabled={isLoading} className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-70 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+          <Zap size={18} className={isLoading ? 'animate-pulse' : ''} /> {isLoading ? "Memproses Data..." : "Render Spasial"}
         </button>
-        <button onClick={onExportClick} disabled={!hasPreview || isLoading} className="w-full py-3 bg-white border-2 border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 disabled:hover:bg-white text-slate-700 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-          <Printer size={16} className="text-slate-500" /> Export & Simpan Arsip
+        <button onClick={onExportClick} disabled={!hasPreview || isLoading} className="w-full py-3.5 bg-white border-2 border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 disabled:hover:bg-white text-slate-700 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm">
+          <Printer size={18} className={hasPreview && !isLoading ? "text-blue-500" : "text-slate-400"} /> Simpan ke Arsip
         </button>
       </div>
     </div>

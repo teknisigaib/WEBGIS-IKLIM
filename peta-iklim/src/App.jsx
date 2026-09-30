@@ -362,7 +362,7 @@ export default function App() {
                             Batalkan
                           </button>
                           <button onClick={handleSaveAndDownload} disabled={isSaving} className="flex-1 md:flex-none px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-500/30 disabled:opacity-70 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                            {isSaving ? <span className="flex items-center gap-2"><Bot size={16} className="animate-bounce"/> Mengarsipkan...</span> : <span className="flex items-center gap-2"><Save size={16}/> Simpan & Unduh Resolusi Tinggi</span>}
+                            {isSaving ? <span className="flex items-center gap-2"><Bot size={16} className="animate-bounce"/> Mengarsipkan...</span> : <span className="flex items-center gap-2"><Save size={16}/> Simpan</span>}
                           </button>
                         </div>
                       </div>

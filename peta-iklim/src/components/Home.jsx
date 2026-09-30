@@ -89,13 +89,13 @@ export default function Home() {
         {/* HEADER SECTION */}
         <div className="w-full text-center flex flex-col items-center mb-12 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold mb-5 shadow-sm">
-            <Sparkles size={14} className="text-blue-500"/> Dasbor Operasional Forecaster
+            <Sparkles size={14} className="text-blue-500"/> Dasbor WebGIS BMKG Samarinda
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 tracking-tight mb-4 drop-shadow-sm">
             WEBGIS Pemetaan Iklim
           </h1>
           <p className="text-sm md:text-base text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
-            Sistem cerdas otomatisasi pengolahan prakiraan dan analisis cuaca menggunakan algoritma interpolasi spasial dan AI.
+            Sistem otomatisasi pengolahan prediksi dan analisis cuaca menggunakan algoritma interpolasi spasial dan AI.
           </p>
         </div>
 
@@ -113,10 +113,10 @@ export default function Home() {
             </div>
             <h2 className="text-xl font-bold text-slate-800 mb-2 tracking-tight">Render Peta Baru</h2>
             <p className="text-slate-500 text-sm leading-relaxed mb-8 font-medium">
-              Buka ruang kerja spasial untuk mengunggah data observasi, mengatur parameter IDW, dan menghasilkan narasi AI.
+              Buka workspace untuk mengunggah data observasi, mengatur parameter IDW, dan menghasilkan narasi AI.
             </p>
             <div className="mt-auto inline-flex items-center gap-2 text-blue-600 text-sm font-semibold group-hover:gap-3 transition-all">
-              Mulai Workspace <ArrowRight size={16} />
+              Workspace <ArrowRight size={16} />
             </div>
           </Link>
 
@@ -192,8 +192,8 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer className="py-8 mt-10 relative z-10 flex flex-col items-center gap-1.5 text-center text-xs text-slate-500 font-medium">
-        <span className="font-medium text-slate-600">&copy; {new Date().getFullYear()} BMKG Provinsi Kalimantan Timur.</span>
-        <span>Stasiun Meteorologi Kelas III APT Pranoto Samarinda</span>
+        <span className="font-medium text-slate-600">&copy; {new Date().getFullYear()} Badan Meteorologi, Klimatologi dan Geofisika.</span>
+        <span>Stasiun Meteorologi Kelas II APT Pranoto Samarinda</span>
       </footer>
     </div>
   );
